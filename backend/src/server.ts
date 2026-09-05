@@ -2,6 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import authRouter from './modules/auth/auth.routes';
+import productsRouter from './modules/products/products.routes';
+import customersRouter from './modules/customers/customers.routes';
+import quotationsRouter from './modules/quotations/quotations.routes';
+import approvalsRouter from './modules/approvals/approvals.routes';
+import ordersRouter from './modules/orders/orders.routes';
+import fulfillmentRouter from './modules/fulfillment/fulfillment.routes';
+import billingRouter from './modules/billing/billing.routes';
+import negotiationsRouter from './modules/negotiations/negotiations.routes';
+import reportingRouter from './modules/reporting/reporting.routes';
+import auditRouter from './modules/audit/audit.routes';
+
 dotenv.config();
 
 const app = express();
@@ -13,11 +25,25 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Basic health check endpoint
+// API Domain Routes
+app.use('/api/auth', authRouter);
+app.use('/api/products', productsRouter);
+app.use('/api/customers', customersRouter);
+app.use('/api/quotes', quotationsRouter);
+app.use('/api/approvals', approvalsRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/fulfillment', fulfillmentRouter);
+app.use('/api/billing', billingRouter);
+app.use('/api/negotiations', negotiationsRouter);
+app.use('/api/reporting', reportingRouter);
+app.use('/api/audit', auditRouter);
+
+// Health check
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     service: 'DealFlow360 API',
+    database: 'SQLite (Prisma)',
     timestamp: new Date().toISOString()
   });
 });

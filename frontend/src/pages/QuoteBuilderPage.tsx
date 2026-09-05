@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   ArrowRight,
+  Save,
 } from 'lucide-react';
 
 interface CartItem {
@@ -114,6 +115,33 @@ export const QuoteBuilderPage: React.FC<{ onQuoteCreated?: (id: string) => void 
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!selectedCustomerId || cart.length === 0) return;
+    setSubmitting(true);
+    setSuccessMessage(null);
+    try {
+      const quote = await api.quotations.create({
+        customerId: selectedCustomerId,
+        saveDraft: true,
+        items: cart.map((c) => ({
+          productId: c.product.id,
+          quantity: c.quantity,
+          discountPercent: c.discountPercent,
+        })),
+      });
+
+      setSuccessMessage(
+        `Quotation ${quote.quoteNumber} saved as DRAFT successfully!`
+      );
+      setCart([]);
+      if (onQuoteCreated) onQuoteCreated(quote.id);
+    } catch (err: any) {
+      alert(err.message || 'Failed to save draft quotation');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmitQuote = async () => {
     if (!selectedCustomerId || cart.length === 0) return;
     setSubmitting(true);
@@ -121,6 +149,7 @@ export const QuoteBuilderPage: React.FC<{ onQuoteCreated?: (id: string) => void 
     try {
       const quote = await api.quotations.create({
         customerId: selectedCustomerId,
+        saveDraft: false,
         items: cart.map((c) => ({
           productId: c.product.id,
           quantity: c.quantity,
@@ -418,14 +447,25 @@ export const QuoteBuilderPage: React.FC<{ onQuoteCreated?: (id: string) => void 
                   <p className="text-[11px] text-slate-400 italic leading-snug">{evaluation.riskExplanation}</p>
                 </div>
 
-                <button
-                  onClick={handleSubmitQuote}
-                  disabled={submitting}
-                  className="w-full py-3 rounded-xl text-xs font-bold tracking-wide uppercase bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 mt-4"
-                >
-                  {submitting ? 'Evaluating & Submitting...' : 'Submit Quotation for Routing'}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-xl text-xs font-bold tracking-wide uppercase bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4 text-slate-400" />
+                    {submitting ? 'Saving...' : 'Save as Draft'}
+                  </button>
+
+                  <button
+                    onClick={handleSubmitQuote}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-xl text-xs font-bold tracking-wide uppercase bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2"
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Quotation for Routing'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

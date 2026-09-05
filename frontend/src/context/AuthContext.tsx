@@ -5,8 +5,7 @@ import { api } from '../api/client';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  demoAccounts: { id: string; name: string; email: string; role: string; companyName: string | null }[];
-  switchUser: (email: string) => Promise<void>;
+  login: (email: string, password?: string) => Promise<void>;
   logout: () => void;
   isCustomer: boolean;
 }
@@ -16,42 +15,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [demoAccounts, setDemoAccounts] = useState<{ id: string; name: string; email: string; role: string; companyName: string | null }[]>([]);
 
   const fetchCurrentUser = async () => {
+    const token = localStorage.getItem('df360_token');
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await api.auth.getMe();
       setUser(data.user);
-    } catch {
-      // If no valid token, auto-login as Sales Rep for instant demo readiness
-      try {
-        const loginData = await api.auth.login('rep@dealflow360.com', 'password123');
-        localStorage.setItem('df360_token', loginData.token);
-        setUser(loginData.user);
-      } catch (err) {
-        console.error('Failed auto-login:', err);
-      }
+    } catch (err: any) {
+      console.warn('Session expired or invalid token:', err?.message);
+      localStorage.removeItem('df360_token');
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    api.auth.getDemoAccounts()
-      .then(setDemoAccounts)
-      .catch((err) => console.error('Failed to load demo accounts', err));
-
     fetchCurrentUser();
   }, []);
 
-  const switchUser = async (email: string) => {
+  const login = async (email: string, password = 'password123') => {
     setLoading(true);
     try {
-      const loginData = await api.auth.login(email, 'password123');
+      const loginData = await api.auth.login(email, password);
       localStorage.setItem('df360_token', loginData.token);
       setUser(loginData.user);
-    } catch (err) {
-      console.error('Switch user error:', err);
+    } catch (err: any) {
+      localStorage.removeItem('df360_token');
+      setUser(null);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -67,8 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         loading,
-        demoAccounts,
-        switchUser,
+        login,
         logout,
         isCustomer: user?.role === 'CUSTOMER',
       }}

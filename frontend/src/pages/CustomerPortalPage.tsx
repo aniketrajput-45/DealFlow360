@@ -145,11 +145,10 @@ export const CustomerPortalPage: React.FC = () => {
                 <div
                   key={q.id}
                   onClick={() => setSelectedQuote(q)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-slate-800/90 border-purple-500 shadow-md ring-1 ring-purple-500/20'
-                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-                  }`}
+                  className={`p-4 rounded-xl border transition-all cursor-pointer ${isSelected
+                    ? 'bg-slate-800/90 border-purple-500 shadow-md ring-1 ring-purple-500/20'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <span className="font-bold text-white text-xs font-mono">{q.quoteNumber}</span>
@@ -232,7 +231,7 @@ export const CustomerPortalPage: React.FC = () => {
 
               {/* Counter-Offer Negotiation Form */}
               {['APPROVED', 'DRAFT', 'NEGOTIATION'].includes(selectedQuote.status) && (
-                <div className="p-5 rounded-xl bg-purple-950/20 border border-purple-900/40 space-y-4">
+                <div >
                   <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
                     <DollarSign className="w-4 h-4" /> Propose Counter-Discount Terms
                   </div>

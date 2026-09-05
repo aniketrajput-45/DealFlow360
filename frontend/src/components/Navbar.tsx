@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ROLE_NAVIGATION } from '../config/navigation';
-import { UserCheck, Building2, ShieldCheck, Lock } from 'lucide-react';
+import { UserCheck, Building2, ShieldCheck, Lock, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: string;
@@ -9,48 +9,39 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab }) => {
-  const { user, demoAccounts, switchUser } = useAuth();
+  const { user, logout } = useAuth();
   const role = user?.role || 'SALES_REP';
   const roleConfig = ROLE_NAVIGATION[role] || ROLE_NAVIGATION['SALES_REP'];
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
-      {/* Top Demo Bar for Testing Role Switching */}
+      {/* Top User Session Header */}
       <div className="bg-slate-950/90 border-b border-slate-800/80 px-6 py-1.5 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          <span className="font-medium text-slate-400 flex items-center gap-1.5 text-[11px]">
-            <UserCheck className="w-3.5 h-3.5 text-slate-500" /> [Dev Demo Switcher]:
+          <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+            <UserCheck className="w-3.5 h-3.5 text-brand-400" />
+            Authenticated User: <strong className="text-white">{user?.name}</strong>
           </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {demoAccounts.map((acc) => {
-              const isActive = user?.email === acc.email;
-              return (
-                <button
-                  key={acc.id}
-                  onClick={() => switchUser(acc.email)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
-                    isActive
-                      ? 'bg-slate-700 text-white font-bold border border-slate-600'
-                      : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
-                  }`}
-                >
-                  {acc.name.split(' ')[0]} ({acc.role})
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
           {user?.customerName && (
-            <span className="flex items-center gap-1 text-slate-400">
+            <span className="flex items-center gap-1 text-slate-400 border-l border-slate-800 pl-3">
               <Building2 className="w-3 h-3 text-purple-400" />
               Org: <strong className="text-white">{user.customerName}</strong>
             </span>
           )}
+        </div>
+
+        <div className="flex items-center gap-3">
           <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-brand-950 text-brand-300 border border-brand-800 tracking-wider">
             {roleConfig.roleName}
           </span>
+
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700/60 rounded text-[11px] font-semibold transition-all"
+            title="Sign out of your session"
+          >
+            <LogOut className="w-3 h-3" /> Sign Out
+          </button>
         </div>
       </div>
 

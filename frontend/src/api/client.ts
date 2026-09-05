@@ -93,7 +93,7 @@ export const api = {
         body: JSON.stringify({ customerId, items }),
       }).then((r) => handleResponse<RiskEvaluation>(r)),
 
-    create: (data: { customerId: string; items: { productId: string; quantity: number; discountPercent: number; unitPrice?: number }[]; validDays?: number }) =>
+    create: (data: { id?: string; customerId: string; items: { productId: string; quantity: number; discountPercent: number; unitPrice?: number }[]; validDays?: number; saveDraft?: boolean }) =>
       fetch(`${API_BASE}/quotes`, {
         method: 'POST',
         headers: getAuthHeaders(),

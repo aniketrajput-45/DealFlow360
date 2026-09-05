@@ -17,7 +17,7 @@ async function runE2ETest() {
   console.log('--- Step 1: Testing Authentication & Roles ---');
   const repUser = await prisma.user.findUnique({ where: { email: 'rep@dealflow360.com' }, include: { role: true } });
   const managerUser = await prisma.user.findUnique({ where: { email: 'manager@dealflow360.com' }, include: { role: true } });
-  const customerUser = await prisma.user.findUnique({ where: { email: 'customer@acme.com' }, include: { role: true, customer: true } });
+  const customerUser = await prisma.user.findUnique({ where: { email: 'customer@abccorp.com' }, include: { role: true, customer: true } });
 
   if (!repUser || !managerUser || !customerUser) {
     throw new Error('Seed users not found.');
@@ -31,10 +31,10 @@ async function runE2ETest() {
 
   // 2. Step 2 & 3: Quotation with High Discount & Blended Risk Evaluation
   console.log('\n--- Step 2 & 3: Discount Governance & Blended Risk Calculation ---');
-  const acmeCustomer = await prisma.customer.findUnique({ where: { email: 'rajesh@acme.com' }, include: { tier: true } });
-  const laptop = await prisma.product.findFirst({ where: { name: { contains: 'Dell Latitude' } } });
-  const setupService = await prisma.product.findFirst({ where: { name: { contains: 'Setup & Onboarding' } } });
-  const slaSubscription = await prisma.product.findFirst({ where: { name: { contains: '24/7 SLA' } } });
+  const acmeCustomer = await prisma.customer.findFirst({ where: { companyName: 'ABC Corp' }, include: { tier: true } });
+  const laptop = await prisma.product.findFirst({ where: { name: { contains: 'Monitor 27-inch' } } });
+  const setupService = await prisma.product.findFirst({ where: { name: { contains: 'Installation Service' } } });
+  const slaSubscription = await prisma.product.findFirst({ where: { name: { contains: 'Premium Support' } } });
 
   if (!acmeCustomer || !laptop || !setupService || !slaSubscription) {
     throw new Error('Required test data not found.');
@@ -119,22 +119,35 @@ async function runE2ETest() {
       reason: 'Strategic customer renewal. Approved by Sales Manager.',
     },
   });
+  console.log('✓ Sales Manager approved the quote (Status remains PENDING_APPROVAL).');
 
-  await prisma.approval.update({
-    where: { id: approval.id },
-    data: { status: 'APPROVED' },
-  });
+  const financeUser = await prisma.user.findUnique({ where: { email: 'finance@dealflow360.com' } });
+  if (financeUser) {
+    await prisma.approvalAction.create({
+      data: {
+        approvalId: approval.id,
+        userId: financeUser.id,
+        action: 'APPROVE',
+        reason: 'Finance approved discount margin impact.',
+      },
+    });
 
-  await prisma.quotation.update({
-    where: { id: quote.id },
-    data: { status: 'APPROVED' },
-  });
-  console.log('✓ Sales Manager approved the quote.');
+    await prisma.approval.update({
+      where: { id: approval.id },
+      data: { status: 'APPROVED' },
+    });
+
+    await prisma.quotation.update({
+      where: { id: quote.id },
+      data: { status: 'APPROVED' },
+    });
+    console.log('✓ Finance approved the quote (Status transitioned to APPROVED).');
+  }
 
   // 4. Step 5 & 6: Warehouse Fulfillment Auto-Splitting & Order Conversion
   console.log('\n--- Step 5: Multi-Warehouse Fulfillment Auto-Splitting ---');
-  const allocationRecommendation = await FulfillmentEngineService.calculateAllocation(laptop.id, 10);
-  console.log(`Requested: 10 units of '${laptop.name}'`);
+  const allocationRecommendation = await FulfillmentEngineService.calculateAllocation(laptop.id, 25);
+  console.log(`Requested: 25 units of '${laptop.name}'`);
   console.log('Fulfillment Engine Split:');
   for (const alloc of allocationRecommendation.allocations) {
     console.log(`  • ${alloc.warehouseName} (${alloc.warehouseCode}, Weight ${alloc.shippingCostWeight}): ${alloc.quantity} units, Shipping: ₹${alloc.shippingCost}`);

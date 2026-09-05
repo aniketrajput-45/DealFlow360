@@ -126,6 +126,19 @@ export const PipelineKanbanPage: React.FC = () => {
                     </div>
 
                     {/* Stage specific quick action */}
+                    {quote.status === 'DRAFT' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedQuoteId(quote.id);
+                        }}
+                        className="w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <ArrowRight className="w-3 h-3 text-slate-400" />
+                        Open & Submit Draft
+                      </button>
+                    )}
+
                     {quote.status === 'NEGOTIATION' && (
                       <button
                         onClick={(e) => {

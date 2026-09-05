@@ -29,25 +29,32 @@ export const getPendingApprovals = async (req: Request, res: Response): Promise<
       orderBy: { createdAt: 'desc' },
     });
 
-    // Tag each approval with whether the current user is eligible to act on it
-    const enhanced = approvals.map((a) => {
-      let canAct = false;
-      if (userRole === 'ADMIN') {
-        canAct = a.status === 'PENDING';
-      } else if (userRole === 'SALES_MANAGER') {
-        // Sales Manager can act if approval is SALES_MANAGER, or first step of SALES_MANAGER_AND_FINANCE
-        canAct = a.status === 'PENDING' && (a.approvalLevel === 'SALES_MANAGER' || a.actions.length === 0);
-      } else if (userRole === 'FINANCE') {
-        // Finance can act if approvalLevel is FINANCE or if Manager has already approved first step
-        const managerHasApproved = a.actions.some((act) => act.action === 'APPROVE');
-        canAct = a.status === 'PENDING' && (a.approvalLevel === 'FINANCE' || (a.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && managerHasApproved));
-      }
+    // Tag each approval with whether the current user is eligible to act on it, and filter queue for role relevance
+    const enhanced = approvals
+      .map((a) => {
+        let canAct = false;
+        const managerAction = a.actions.find((act) => {
+          const roleName = act.user?.role?.name;
+          return roleName === 'SALES_MANAGER' || roleName === 'ADMIN';
+        });
+        const managerApproved = managerAction ? managerAction.action === 'APPROVE' : false;
 
-      return {
-        ...a,
-        canAct,
-      };
-    });
+        if (userRole === 'ADMIN') {
+          canAct = a.status === 'PENDING';
+        } else if (userRole === 'SALES_MANAGER') {
+          // Sales Manager can act if single-step SALES_MANAGER, or if multi-step and manager hasn't acted yet
+          canAct = a.status === 'PENDING' && (a.approvalLevel === 'SALES_MANAGER' || (a.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && !managerAction));
+        } else if (userRole === 'FINANCE') {
+          // Finance can act if single-step FINANCE, or if multi-step and Sales Manager has already approved
+          canAct = a.status === 'PENDING' && (a.approvalLevel === 'FINANCE' || (a.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && managerApproved));
+        }
+
+        return {
+          ...a,
+          canAct,
+        };
+      })
+      .filter((a) => (status === 'PENDING' && userRole !== 'ADMIN' ? a.canAct : true));
 
     res.json(enhanced);
   } catch (error: any) {
@@ -92,17 +99,24 @@ export const takeApprovalAction = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // Role eligibility check
+    // Enhanced role eligibility check
     if (userRole === 'SALES_REP' || userRole === 'CUSTOMER') {
       res.status(403).json({ error: 'Only Sales Managers, Finance users, or Admins can act on approvals.' });
       return;
     }
 
-    // Handle 2-step workflow for SALES_MANAGER_AND_FINANCE
     const previousActions = approval.actions;
-    const managerApproved = previousActions.some((a) => a.action === 'APPROVE');
+    const managerAction = previousActions.find((a) => {
+      const roleName = a.user?.role?.name;
+      return roleName === 'SALES_MANAGER' || roleName === 'ADMIN';
+    });
+    const managerApproved = managerAction ? managerAction.action === 'APPROVE' : false;
 
     if (approval.approvalLevel === 'SALES_MANAGER_AND_FINANCE') {
+      if (userRole === 'SALES_MANAGER' && managerAction) {
+        res.status(400).json({ error: 'Sales Manager has already submitted a decision for this quotation.' });
+        return;
+      }
       if (userRole === 'FINANCE' && !managerApproved) {
         res.status(400).json({ error: 'Sales Manager must review and approve this quotation before Finance approval.' });
         return;
@@ -132,17 +146,34 @@ export const takeApprovalAction = async (req: Request, res: Response): Promise<v
         updatedQuoteStatus = 'DRAFT'; // Returns quote back to draft for rep revision
       } else if (action === 'APPROVE') {
         if (approval.approvalLevel === 'SALES_MANAGER_AND_FINANCE') {
-          if (managerApproved || userRole === 'FINANCE' || userRole === 'ADMIN') {
-            // Both manager and finance have now approved (or Admin overrode)
+          if (userRole === 'ADMIN') {
+            // Admin override approves the whole deal immediately
             updatedApprovalStatus = 'APPROVED';
             updatedQuoteStatus = 'APPROVED';
-          } else {
-            // Manager approved first step; remains PENDING for Finance
+          } else if (userRole === 'FINANCE') {
+            // Finance approved (and Manager had already approved) -> Fully APPROVED
+            updatedApprovalStatus = 'APPROVED';
+            updatedQuoteStatus = 'APPROVED';
+          } else if (userRole === 'SALES_MANAGER') {
+            // Sales Manager approved first step; MUST remain PENDING and quotation MUST remain PENDING_APPROVAL
             updatedApprovalStatus = 'PENDING';
             updatedQuoteStatus = 'PENDING_APPROVAL';
           }
+        } else if (approval.approvalLevel === 'SALES_MANAGER') {
+          if (userRole === 'FINANCE') {
+            res.status(403).json({ error: 'This quotation requires Sales Manager approval.' });
+            return { error: 'Only Sales Manager or Admin can approve this level.' };
+          }
+          updatedApprovalStatus = 'APPROVED';
+          updatedQuoteStatus = 'APPROVED';
+        } else if (approval.approvalLevel === 'FINANCE') {
+          if (userRole === 'SALES_MANAGER') {
+            res.status(403).json({ error: 'This quotation requires Finance approval.' });
+            return { error: 'Only Finance or Admin can approve this level.' };
+          }
+          updatedApprovalStatus = 'APPROVED';
+          updatedQuoteStatus = 'APPROVED';
         } else {
-          // Single-step approval completed
           updatedApprovalStatus = 'APPROVED';
           updatedQuoteStatus = 'APPROVED';
         }
@@ -160,6 +191,11 @@ export const takeApprovalAction = async (req: Request, res: Response): Promise<v
 
       return { newAction, updatedApprovalStatus, updatedQuoteStatus };
     });
+
+    if ('error' in result) {
+      res.status(403).json({ error: result.error });
+      return;
+    }
 
     // 2. Append to immutable AuditLog
     await AuditService.record({

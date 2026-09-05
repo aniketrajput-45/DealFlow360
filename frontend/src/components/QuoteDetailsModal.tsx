@@ -10,6 +10,7 @@ import {
   XCircle,
   MessageSquare,
   Send,
+  ArrowRight,
 } from 'lucide-react';
 
 interface Props {
@@ -60,6 +61,34 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
       if (onQuoteUpdated) onQuoteUpdated();
     } catch (err: any) {
       setFeedback({ type: 'error', text: err.message || 'Action failed.' });
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
+  const handleSubmitDraft = async () => {
+    if (!quote) return;
+    setSubmittingAction(true);
+    setFeedback(null);
+    try {
+      const updated = await api.quotations.create({
+        id: quote.id,
+        customerId: quote.customerId,
+        saveDraft: false,
+        items: quote.items.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          discountPercent: i.discountPercent,
+        })),
+      });
+      setFeedback({
+        type: 'success',
+        text: `Quotation ${updated.quoteNumber} submitted for routing! Status: ${updated.status}`,
+      });
+      loadQuote();
+      if (onQuoteUpdated) onQuoteUpdated();
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Failed to submit draft' });
     } finally {
       setSubmittingAction(false);
     }
@@ -129,6 +158,24 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
             <div className="py-12 text-center text-slate-500 italic">Loading quotation details...</div>
           ) : (
             <>
+              {/* Draft Submission Banner */}
+              {quote.status === 'DRAFT' && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-bold text-slate-200 text-xs">This quotation is currently saved as a DRAFT.</div>
+                    <div className="text-[11px] text-slate-400">Ready to route for managerial approval or auto-approval?</div>
+                  </div>
+                  <button
+                    onClick={handleSubmitDraft}
+                    disabled={submittingAction}
+                    className="px-4 py-2 rounded-lg text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md flex items-center gap-1.5 shrink-0"
+                  >
+                    {submittingAction ? 'Submitting...' : 'Submit Draft for Routing'}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Customer Counter-Offer Review Banner */}
               {pendingNeg && (
                 <div className="p-5 rounded-xl bg-purple-950/40 border border-purple-800/80 space-y-3">

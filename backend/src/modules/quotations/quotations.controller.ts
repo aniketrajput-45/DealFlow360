@@ -20,7 +20,7 @@ export const evaluateQuotePreview = async (req: Request, res: Response): Promise
 
 export const createQuotation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { customerId, items, validDays = 30 } = req.body;
+    const { id, customerId, items, validDays = 30, saveDraft = false } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -35,19 +35,126 @@ export const createQuotation = async (req: Request, res: Response): Promise<void
     // 1. Authoritative Backend Risk & Financial Evaluation
     const evaluation = await RiskEngineService.evaluateQuote(customerId, items);
 
-    // 2. Generate unique Quote Number
-    const count = await prisma.quotation.count();
-    const quoteNumber = `QT-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
-
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + validDays);
 
-    // 3. Determine initial status:
-    // If approval is required, quote moves to PENDING_APPROVAL automatically!
-    const initialStatus = evaluation.requiresApproval ? 'PENDING_APPROVAL' : 'APPROVED';
+    let resultQuote;
 
-    // 4. Atomic Database Transaction
-    const newQuote = await prisma.$transaction(async (tx) => {
+    if (id) {
+      // Updating an existing quotation (e.g. draft update or draft submit)
+      const existingQuote = await prisma.quotation.findUnique({
+        where: { id },
+        include: { approvals: true },
+      });
+
+      if (!existingQuote) {
+        res.status(404).json({ error: 'Quotation not found.' });
+        return;
+      }
+
+      const isDraft = saveDraft;
+      const initialStatus = isDraft
+        ? 'DRAFT'
+        : evaluation.requiresApproval
+        ? 'PENDING_APPROVAL'
+        : 'APPROVED';
+
+      resultQuote = await prisma.$transaction(async (tx) => {
+        // Delete existing items for clean update
+        await tx.quotationItem.deleteMany({
+          where: { quotationId: id },
+        });
+
+        const quote = await tx.quotation.update({
+          where: { id },
+          data: {
+            customerId,
+            status: initialStatus,
+            subtotal: evaluation.subtotal,
+            discountAmount: evaluation.totalDiscountAmount,
+            taxAmount: evaluation.totalTaxAmount,
+            totalAmount: evaluation.totalAmount,
+            totalMargin: evaluation.totalMargin,
+            riskScore: evaluation.riskScore,
+            requiredApprovalLevel: evaluation.requiredApprovalLevel,
+            validUntil,
+            items: {
+              create: evaluation.lines.map((l) => ({
+                productId: l.productId,
+                quantity: l.quantity,
+                unitPrice: l.unitPrice,
+                costPrice: l.costPrice,
+                discountPercent: l.discountPercent,
+                discountAmount: l.discountAmount,
+                taxPercent: l.taxPercent,
+                lineSubtotal: l.lineSubtotal,
+                lineTotal: l.lineTotal,
+                marginAmount: l.marginAmount,
+                riskPoints: l.riskPoints,
+              })),
+            },
+          },
+          include: {
+            items: { include: { product: true } },
+            customer: { include: { tier: true } },
+            createdBy: { select: { id: true, name: true, email: true } },
+          },
+        });
+
+        // Only create approval if NOT a draft AND approval is required AND no pending approval exists yet
+        if (!isDraft && evaluation.requiresApproval) {
+          const existingPendingApproval = await tx.approval.findFirst({
+            where: { quotationId: id, status: 'PENDING' },
+          });
+          if (!existingPendingApproval) {
+            await tx.approval.create({
+              data: {
+                quotationId: quote.id,
+                approvalLevel: evaluation.requiredApprovalLevel,
+                status: 'PENDING',
+                riskScore: evaluation.riskScore,
+                reason: evaluation.riskExplanation,
+              },
+            });
+          }
+        }
+
+        return quote;
+      });
+
+      await AuditService.record({
+        userId,
+        action: isDraft
+          ? 'QUOTE_UPDATED_DRAFT'
+          : evaluation.requiresApproval
+          ? 'QUOTE_SUBMITTED_PENDING_APPROVAL'
+          : 'QUOTE_SUBMITTED_AUTO_APPROVED',
+        entityType: 'Quotation',
+        entityId: resultQuote.id,
+        details: {
+          quoteNumber: resultQuote.quoteNumber,
+          totalAmount: resultQuote.totalAmount,
+          riskScore: evaluation.riskScore,
+          requiredApprovalLevel: evaluation.requiredApprovalLevel,
+        },
+      });
+
+      res.status(200).json(resultQuote);
+      return;
+    }
+
+    // Creating a brand new quotation
+    const count = await prisma.quotation.count();
+    const quoteNumber = `QT-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
+    const isDraft = saveDraft;
+    const initialStatus = isDraft
+      ? 'DRAFT'
+      : evaluation.requiresApproval
+      ? 'PENDING_APPROVAL'
+      : 'APPROVED';
+
+    resultQuote = await prisma.$transaction(async (tx) => {
       const quote = await tx.quotation.create({
         data: {
           quoteNumber,
@@ -85,8 +192,8 @@ export const createQuotation = async (req: Request, res: Response): Promise<void
         },
       });
 
-      // If approval required, create the initial Approval record
-      if (evaluation.requiresApproval) {
+      // If approval required AND NOT A DRAFT, create the initial Approval record
+      if (!isDraft && evaluation.requiresApproval) {
         await tx.approval.create({
           data: {
             quotationId: quote.id,
@@ -101,21 +208,24 @@ export const createQuotation = async (req: Request, res: Response): Promise<void
       return quote;
     });
 
-    // 5. Append-only Audit Log
     await AuditService.record({
       userId,
-      action: evaluation.requiresApproval ? 'QUOTE_CREATED_PENDING_APPROVAL' : 'QUOTE_CREATED_AUTO_APPROVED',
+      action: isDraft
+        ? 'QUOTE_CREATED_DRAFT'
+        : evaluation.requiresApproval
+        ? 'QUOTE_CREATED_PENDING_APPROVAL'
+        : 'QUOTE_CREATED_AUTO_APPROVED',
       entityType: 'Quotation',
-      entityId: newQuote.id,
+      entityId: resultQuote.id,
       details: {
-        quoteNumber: newQuote.quoteNumber,
-        totalAmount: newQuote.totalAmount,
+        quoteNumber: resultQuote.quoteNumber,
+        totalAmount: resultQuote.totalAmount,
         riskScore: evaluation.riskScore,
         requiredApprovalLevel: evaluation.requiredApprovalLevel,
       },
     });
 
-    res.status(201).json(newQuote);
+    res.status(201).json(resultQuote);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create quotation.' });
   }

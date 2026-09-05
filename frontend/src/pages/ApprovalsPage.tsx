@@ -32,7 +32,7 @@ export const ApprovalsPage: React.FC = () => {
   }, [user]);
 
   const handleAction = async (action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES') => {
-    if (!selectedApproval) return;
+    if (!selectedApproval || processing) return;
     if (action !== 'APPROVE' && !actionReason.trim()) {
       alert('Please provide a reason or note for this decision.');
       return;
@@ -44,7 +44,12 @@ export const ApprovalsPage: React.FC = () => {
       const res = await api.approvals.takeAction(selectedApproval.id, action, actionReason);
       setFeedback({ type: 'success', text: res.message });
       setActionReason('');
-      loadApprovals();
+      
+      // Fetch fresh approvals and update currently selected item
+      const freshData = await api.approvals.getAll('PENDING');
+      setApprovals(freshData);
+      const refreshedItem = freshData.find((d) => d.id === selectedApproval.id);
+      setSelectedApproval(refreshedItem || freshData[0] || null);
     } catch (err: any) {
       setFeedback({ type: 'error', text: err.message || 'Failed to process approval.' });
     } finally {
@@ -228,6 +233,82 @@ export const ApprovalsPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Multi-Level Stage Tracker */}
+              {selectedApproval.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                    Multi-Level Governance Approval Progress
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {(() => {
+                      const mgrAction = selectedApproval.actions?.find(
+                        (a) => a.user?.role?.name === 'SALES_MANAGER' || a.user?.role?.name === 'ADMIN'
+                      );
+                      const isMgrApproved = mgrAction?.action === 'APPROVE';
+                      const isMgrRejected = mgrAction?.action === 'REJECT';
+
+                      return (
+                        <>
+                          <div
+                            className={`p-3 rounded-lg border flex items-center justify-between ${
+                              isMgrApproved
+                                ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300'
+                                : isMgrRejected
+                                ? 'bg-rose-950/40 border-rose-800 text-rose-300'
+                                : 'bg-slate-900 border-slate-800 text-slate-400'
+                            }`}
+                          >
+                            <div>
+                              <div className="font-bold">1. Sales Manager Review</div>
+                              <div className="text-[10px]">
+                                {isMgrApproved
+                                  ? `Approved by ${mgrAction?.user?.name}`
+                                  : isMgrRejected
+                                  ? `Rejected by ${mgrAction?.user?.name}`
+                                  : 'Pending Review ⏳'}
+                              </div>
+                            </div>
+                            <span className="font-bold font-mono">
+                              {isMgrApproved ? '✓ Approved' : isMgrRejected ? '✗ Rejected' : '⏳ Pending'}
+                            </span>
+                          </div>
+
+                          <div
+                            className={`p-3 rounded-lg border flex items-center justify-between ${
+                              selectedApproval.status === 'APPROVED'
+                                ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300'
+                                : selectedApproval.status === 'REJECTED'
+                                ? 'bg-rose-950/40 border-rose-800 text-rose-300'
+                                : isMgrApproved
+                                ? 'bg-amber-950/40 border-amber-800 text-amber-300'
+                                : 'bg-slate-900 border-slate-800 text-slate-500 opacity-60'
+                            }`}
+                          >
+                            <div>
+                              <div className="font-bold">2. Finance Review</div>
+                              <div className="text-[10px]">
+                                {selectedApproval.status === 'APPROVED'
+                                  ? 'Approved ✓'
+                                  : isMgrApproved
+                                  ? 'Awaiting Finance Review ⏳'
+                                  : 'Awaiting Manager Review First'}
+                              </div>
+                            </div>
+                            <span className="font-bold font-mono">
+                              {selectedApproval.status === 'APPROVED'
+                                ? '✓ Approved'
+                                : isMgrApproved
+                                ? '⏳ Pending'
+                                : 'Locked'}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
               {/* Audit History */}
               {selectedApproval.actions && selectedApproval.actions.length > 0 && (
                 <div>
@@ -249,46 +330,54 @@ export const ApprovalsPage: React.FC = () => {
               )}
 
               {/* Action Controls */}
-              <div className="pt-4 border-t border-slate-800 space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                    Decision Note / Reason:
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={actionReason}
-                    onChange={(e) => setActionReason(e.target.value)}
-                    placeholder="Enter review comments, justification, or required revision notes..."
-                    className="w-full bg-slate-950 text-white text-xs p-3 rounded-xl border border-slate-800 focus:outline-none focus:border-brand-500"
-                  />
+              {selectedApproval.canAct === false ? (
+                <div className="pt-4 border-t border-slate-800 text-center p-3 bg-slate-950/60 rounded-xl text-slate-400 text-xs border border-slate-800">
+                  {selectedApproval.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && user?.role === 'SALES_MANAGER'
+                    ? '✓ You have already submitted your decision for this quotation.'
+                    : '⏳ Awaiting Sales Manager review before Finance can take action.'}
                 </div>
+              ) : (
+                <div className="pt-4 border-t border-slate-800 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                      Decision Note / Reason:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={actionReason}
+                      onChange={(e) => setActionReason(e.target.value)}
+                      placeholder="Enter review comments, justification, or required revision notes..."
+                      className="w-full bg-slate-950 text-white text-xs p-3 rounded-xl border border-slate-800 focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleAction('APPROVE')}
-                    disabled={processing}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Approve Deal
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleAction('APPROVE')}
+                      disabled={processing}
+                      className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> {processing ? 'Processing...' : 'Approve Deal'}
+                    </button>
 
-                  <button
-                    onClick={() => handleAction('REQUEST_CHANGES')}
-                    disabled={processing}
-                    className="py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all border border-slate-700"
-                  >
-                    Request Changes
-                  </button>
+                    <button
+                      onClick={() => handleAction('REQUEST_CHANGES')}
+                      disabled={processing}
+                      className="py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Request Changes
+                    </button>
 
-                  <button
-                    onClick={() => handleAction('REJECT')}
-                    disabled={processing}
-                    className="py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-950/80 hover:bg-rose-900 text-rose-300 transition-all border border-rose-800/80 flex items-center gap-1"
-                  >
-                    <XCircle className="w-4 h-4" /> Reject
-                  </button>
+                    <button
+                      onClick={() => handleAction('REJECT')}
+                      disabled={processing}
+                      className="py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-950/80 hover:bg-rose-900 text-rose-300 transition-all border border-rose-800/80 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="py-24 text-center text-slate-600 text-xs">Select an approval item to view details</div>

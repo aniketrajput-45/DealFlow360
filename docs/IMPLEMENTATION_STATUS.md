@@ -25,12 +25,32 @@
 | **Phase 13** | Sales dashboard, deal health alerts, anomaly detection & Kanban | ✅ Completed | Verified stalled deals & discount anomaly rules |
 | **Phase 14** | Full UI Experience, Interactive Screens & Live Demo Polish | ✅ Completed | Verified zero-error build (`tsc && vite build`) & full E2E flow integration |
 | **Phase 15** | Dedicated Admin Workspace (System Health, Users, Products, Governance, Inventory, Audit Logs) | ✅ Completed | Verified backend ADMIN endpoints, RBAC enforcement, frontend builds & navigation |
+| **Phase 16** | Real Authentication & Role-Based Session Management | ✅ Completed | Verified login form, JWT session persistence, protected routes, role routing & logout |
 
 ## Approved Adjustments & Technical Decisions
 
 > [!IMPORTANT]
 > **1. Database Target: SQLite**
 > SQLite (`file:./prisma/dev.db`) is the chosen target database for this MVP/hackathon implementation. Prisma ORM is configured with the `sqlite` provider. Enums and relational constraints are modeled in Prisma schema in full alignment with SQLite capabilities.
+
+> [!NOTE]
+> **2. Real Authentication & Role-Based Session Management**
+> Real JWT authentication is active across all endpoints. Users authenticate with corporate email and password via `/api/auth/login`. Unauthenticated requests redirect to `LoginPage`. Active sessions persist across page refreshes via `localStorage` JWT token validation (`/api/auth/me`). Role switching buttons have been completely removed from normal navigation and replaced with a read-only role badge and a **Sign Out** button.
+
+---
+
+## 9. Real Authentication & Role-Based Session Implementation
+
+- **Login Page (`LoginPage.tsx`)**: Renders a clean sign-in screen without role selection dropdowns. Validates email & password via `api.auth.login`. Includes a Hackathon Demo Accounts section for instant pre-filling.
+- **Session Persistence & Validation (`AuthContext.tsx`)**: Stores JWT token (`df360_token`) in `localStorage`. On page reload, calls `/api/auth/me` to retrieve authenticated identity and role directly from backend. On 401 response or invalid token, auto-clears session and redirects to `LoginPage`.
+- **Protected Routes (`App.tsx`)**: Unauthenticated users are strictly blocked from accessing any application tab or dashboard; all requests render `LoginPage`.
+- **User Profile Header (`Navbar.tsx`)**: Displays authenticated user name, customer organization name (if customer user), read-only role badge, and a **Sign Out** button that clears localStorage token and returns to login screen.
+- **Role Workspace Landing**:
+  - `ADMIN` → Admin Console & Left Sidebar
+  - `SALES_REP` → Rep Dashboard & Sales Pipeline
+  - `SALES_MANAGER` → Manager Dashboard & Approval Center
+  - `FINANCE` → Finance Dashboard & Billing Invoices
+  - `CUSTOMER` → Customer Portal & Quotes
 
 > [!NOTE]
 > **2. System Management Admin Role**

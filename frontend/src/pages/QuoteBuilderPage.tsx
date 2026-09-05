@@ -12,7 +12,6 @@ import {
   ShieldAlert,
   CheckCircle2,
   ArrowRight,
-  Info,
 } from 'lucide-react';
 
 interface CartItem {

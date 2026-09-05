@@ -4,18 +4,15 @@ import { Quotation } from '../types';
 import { Badge } from '../components/Badge';
 import { Kanban, ArrowRight, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
-export const PipelineKanbanPage: React.FC<{ onSelectQuote?: (id: string) => void }> = ({ onSelectQuote }) => {
+export const PipelineKanbanPage: React.FC = () => {
   const [quotes, setQuotes] = useState<Quotation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [orderNotice, setOrderNotice] = useState<string | null>(null);
 
   const loadQuotes = () => {
-    setLoading(true);
     api.quotations
       .getAll()
-      .then(setQuotes)
-      .finally(() => setLoading(false));
+      .then(setQuotes);
   };
 
   useEffect(() => {

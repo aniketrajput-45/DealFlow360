@@ -12,10 +12,14 @@ import {
   X,
 } from 'lucide-react';
 
-export const BillingPage: React.FC = () => {
+export const BillingPage: React.FC<{ defaultSubTab?: 'invoices' | 'subscriptions' }> = ({ defaultSubTab = 'invoices' }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [activeTab, setActiveTab] = useState<'invoices' | 'subscriptions'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'subscriptions'>(defaultSubTab);
+
+  useEffect(() => {
+    setActiveTab(defaultSubTab);
+  }, [defaultSubTab]);
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<string>('BANK_TRANSFER');

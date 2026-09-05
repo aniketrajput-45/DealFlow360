@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Warehouse, Product, Order } from '../types';
-import { Truck, MapPin, Package, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Truck, MapPin, Package } from 'lucide-react';
 
 export const FulfillmentPage: React.FC = () => {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);

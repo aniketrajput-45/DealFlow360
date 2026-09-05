@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { Quotation, Product, Customer } from '../../types';
 import { Badge } from '../../components/Badge';
+import { QuoteDetailsModal } from '../../components/QuoteDetailsModal';
 import { useAuth } from '../../context/AuthContext';
 import {
   FilePlus,
@@ -22,8 +23,9 @@ export const SalesRepDashboard: React.FC<Props> = ({ onNavigate }) => {
   const [recentQuotes, setRecentQuotes] = useState<Quotation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = () => {
     Promise.all([
       api.quotations.getAll(),
       api.products.getAll(),
@@ -33,6 +35,10 @@ export const SalesRepDashboard: React.FC<Props> = ({ onNavigate }) => {
       setProducts(prodsData);
       setCustomers(custsData);
     });
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const totalValue = recentQuotes.reduce((sum, q) => sum + q.totalAmount, 0);
@@ -103,7 +109,7 @@ export const SalesRepDashboard: React.FC<Props> = ({ onNavigate }) => {
                 <Clock className="w-4 h-4 text-brand-400" />
                 Recent Sales Quotations
               </h2>
-              <p className="text-xs text-slate-400">Quotations generated and their current approval status</p>
+              <p className="text-xs text-slate-400">Click any quotation to view details or respond to counter-offers</p>
             </div>
             <button
               onClick={() => onNavigate('quotations')}
@@ -119,10 +125,13 @@ export const SalesRepDashboard: React.FC<Props> = ({ onNavigate }) => {
               return (
                 <div
                   key={q.id}
-                  className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition-all flex items-center justify-between"
+                  onClick={() => setSelectedQuoteId(q.id)}
+                  className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-brand-500/50 cursor-pointer transition-all flex items-center justify-between group"
                 >
                   <div>
-                    <div className="font-bold text-white text-sm">{q.customer?.companyName || 'Corporate Client'}</div>
+                    <div className="font-bold text-white text-sm group-hover:text-brand-400 transition-colors">
+                      {q.customer?.companyName || 'Corporate Client'}
+                    </div>
                     <div className="text-xs text-slate-400 font-mono flex items-center gap-2 mt-0.5">
                       <span>{q.quoteNumber}</span>
                       <span>•</span>
@@ -216,6 +225,15 @@ export const SalesRepDashboard: React.FC<Props> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* Quote Details & Counter Offer Review Modal */}
+      {selectedQuoteId && (
+        <QuoteDetailsModal
+          quoteId={selectedQuoteId}
+          onClose={() => setSelectedQuoteId(null)}
+          onQuoteUpdated={loadData}
+        />
+      )}
     </div>
   );
 };

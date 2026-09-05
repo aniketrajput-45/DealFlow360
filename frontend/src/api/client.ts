@@ -229,4 +229,61 @@ export const api = {
         body: JSON.stringify({ quoteId, actionType, notes }),
       }).then((r) => handleResponse<any>(r)),
   },
+
+  // Warehouses & Stock
+  warehouses: {
+    list: () =>
+      fetch(`${API_BASE}/fulfillment/warehouses`, { headers: getAuthHeaders() }).then((r) =>
+        handleResponse<Warehouse[]>(r)
+      ),
+  },
+
+  // Subscriptions
+  subscriptions: {
+    listPlans: () =>
+      fetch(`${API_BASE}/subscriptions/plans`, { headers: getAuthHeaders() }).then((r) =>
+        handleResponse<any[]>(r)
+      ).catch(() => fetch(`${API_BASE}/billing/subscriptions`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r))),
+  },
+
+  // Audit Logs
+  audit: {
+    getLogs: (params?: { entityType?: string; entityId?: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.entityType) q.append('entityType', params.entityType);
+      if (params?.entityId) q.append('entityId', params.entityId);
+      if (params?.limit) q.append('limit', String(params.limit));
+      return fetch(`${API_BASE}/audit?${q.toString()}`, { headers: getAuthHeaders() }).then((r) =>
+        handleResponse<any[]>(r)
+      );
+    },
+  },
+
+  // Admin Workspace
+  admin: {
+    getStats: () =>
+      fetch(`${API_BASE}/admin/stats`, { headers: getAuthHeaders() }).then((r) => handleResponse<any>(r)),
+
+    getUsers: () =>
+      fetch(`${API_BASE}/admin/users`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
+
+    updateUserRole: (id: string, roleName: string) =>
+      fetch(`${API_BASE}/admin/users/${id}/role`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ roleName }),
+      }).then((r) => handleResponse<any>(r)),
+
+    getPricingRules: () =>
+      fetch(`${API_BASE}/admin/pricing-rules`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
+
+    getDiscountGovernance: () =>
+      fetch(`${API_BASE}/admin/discount-governance`, { headers: getAuthHeaders() }).then((r) => handleResponse<any>(r)),
+
+    getUpsellRules: () =>
+      fetch(`${API_BASE}/admin/upsell-rules`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
+
+    getLogs: () =>
+      fetch(`${API_BASE}/audit`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
+  },
 };

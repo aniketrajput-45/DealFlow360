@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { Approval, DealHealthAlerts, Quotation } from '../../types';
+import { QuoteDetailsModal } from '../../components/QuoteDetailsModal';
 import { useAuth } from '../../context/AuthContext';
 import {
   CheckSquare,
@@ -21,8 +22,9 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
   const [pendingApprovals, setPendingApprovals] = useState<Approval[]>([]);
   const [dealHealth, setDealHealth] = useState<DealHealthAlerts | null>(null);
   const [quotes, setQuotes] = useState<Quotation[]>([]);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = () => {
     Promise.all([
       api.approvals.getAll('PENDING'),
       api.reporting.getHealth(),
@@ -32,6 +34,10 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
       setDealHealth(healthData);
       setQuotes(quotesData);
     });
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const totalPipelineValue = quotes.reduce((sum, q) => sum + q.totalAmount, 0);
@@ -143,10 +149,13 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
               return (
                 <div
                   key={appr.id}
-                  className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition-all flex items-center justify-between"
+                  onClick={() => setSelectedQuoteId(appr.quotationId)}
+                  className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-amber-500/50 cursor-pointer transition-all flex items-center justify-between group"
                 >
                   <div>
-                    <div className="font-bold text-white text-sm">{appr.quotation?.customer?.companyName || 'Corporate Client'}</div>
+                    <div className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">
+                      {appr.quotation?.customer?.companyName || 'Corporate Client'}
+                    </div>
                     <div className="text-xs text-slate-400 font-mono flex items-center gap-2 mt-0.5">
                       <span>Quote #{appr.quotation?.quoteNumber}</span>
                       <span>•</span>
@@ -160,7 +169,10 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
                       <div className="text-[11px] text-rose-400 font-semibold">{discPercent.toFixed(1)}% Discount</div>
                     </div>
                     <button
-                      onClick={() => onNavigate('approvals')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedQuoteId(appr.quotationId);
+                      }}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm"
                     >
                       Review
@@ -251,6 +263,15 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* Quote Details & Counter Offer Review Modal */}
+      {selectedQuoteId && (
+        <QuoteDetailsModal
+          quoteId={selectedQuoteId}
+          onClose={() => setSelectedQuoteId(null)}
+          onQuoteUpdated={loadData}
+        />
+      )}
     </div>
   );
 };

@@ -2,14 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { Quotation } from '../../types';
 import { Badge } from '../../components/Badge';
-import { FileText } from 'lucide-react';
+import { QuoteDetailsModal } from '../../components/QuoteDetailsModal';
+import { FileText, MessageSquare } from 'lucide-react';
 
 export const QuotationsListView: React.FC = () => {
   const [quotes, setQuotes] = useState<Quotation[]>([]);
   const [filter, setFilter] = useState<string>('ALL');
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+
+  const loadQuotes = () => {
+    api.quotations.getAll().then(setQuotes);
+  };
 
   useEffect(() => {
-    api.quotations.getAll().then(setQuotes);
+    loadQuotes();
   }, []);
 
   const filteredQuotes = quotes.filter((q) => {
@@ -25,11 +31,13 @@ export const QuotationsListView: React.FC = () => {
             <FileText className="w-6 h-6 text-brand-400" />
             Quotations Master List
           </h1>
-          <p className="text-sm text-slate-400">Comprehensive list of generated sales proposals, discounts, and approval states.</p>
+          <p className="text-sm text-slate-400">
+            Comprehensive list of generated sales proposals. Click any row to inspect line details or respond to customer counter-offers.
+          </p>
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto">
-          {['ALL', 'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'ACCEPTED'].map((st) => (
+          {['ALL', 'DRAFT', 'PENDING_APPROVAL', 'NEGOTIATION', 'APPROVED', 'ACCEPTED'].map((st) => (
             <button
               key={st}
               onClick={() => setFilter(st)}
@@ -57,6 +65,7 @@ export const QuotationsListView: React.FC = () => {
                 <th className="p-3">Margin %</th>
                 <th className="p-3">Risk Score</th>
                 <th className="p-3">Status</th>
+                <th className="p-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -66,8 +75,14 @@ export const QuotationsListView: React.FC = () => {
                 const marginPercent = q.totalAmount > 0 ? (q.totalMargin / q.totalAmount) * 100 : 0;
 
                 return (
-                  <tr key={q.id} className="hover:bg-slate-800/30">
-                    <td className="p-3 font-mono font-bold text-white">{q.quoteNumber}</td>
+                  <tr
+                    key={q.id}
+                    onClick={() => setSelectedQuoteId(q.id)}
+                    className="hover:bg-slate-800/50 cursor-pointer transition-all group"
+                  >
+                    <td className="p-3 font-mono font-bold text-white group-hover:text-brand-400 transition-colors">
+                      {q.quoteNumber}
+                    </td>
                     <td className="p-3 font-semibold text-slate-200">{q.customer?.companyName}</td>
                     <td className="p-3 font-mono font-bold text-white">₹{q.totalAmount.toLocaleString()}</td>
                     <td className="p-3 font-mono text-rose-400">{discPercent.toFixed(1)}%</td>
@@ -78,6 +93,15 @@ export const QuotationsListView: React.FC = () => {
                     <td className="p-3">
                       <Badge status={q.status} />
                     </td>
+                    <td className="p-3 text-right">
+                      {q.status === 'NEGOTIATION' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-950 text-purple-300 font-semibold border border-purple-800">
+                          <MessageSquare className="w-3 h-3" /> Counter-Offer
+                        </span>
+                      ) : (
+                        <span className="text-brand-400 font-semibold hover:underline">View Details</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -85,6 +109,15 @@ export const QuotationsListView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Quote Details & Counter Offer Review Modal */}
+      {selectedQuoteId && (
+        <QuoteDetailsModal
+          quoteId={selectedQuoteId}
+          onClose={() => setSelectedQuoteId(null)}
+          onQuoteUpdated={loadQuotes}
+        />
+      )}
     </div>
   );
 };

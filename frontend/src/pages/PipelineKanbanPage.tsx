@@ -2,24 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Quotation } from '../types';
 import { Badge } from '../components/Badge';
-import { Kanban, ArrowRight, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { QuoteDetailsModal } from '../components/QuoteDetailsModal';
+import { Kanban, ArrowRight, ShieldAlert, CheckCircle2, MessageSquare } from 'lucide-react';
 
 export const PipelineKanbanPage: React.FC = () => {
   const [quotes, setQuotes] = useState<Quotation[]>([]);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [orderNotice, setOrderNotice] = useState<string | null>(null);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
 
   const loadQuotes = () => {
-    api.quotations
-      .getAll()
-      .then(setQuotes);
+    api.quotations.getAll().then(setQuotes);
   };
 
   useEffect(() => {
     loadQuotes();
   }, []);
 
-  const handleConvertToOrder = async (quoteId: string) => {
+  const handleConvertToOrder = async (quoteId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setConvertingId(quoteId);
     setOrderNotice(null);
     try {
@@ -50,7 +51,9 @@ export const PipelineKanbanPage: React.FC = () => {
             <Kanban className="w-6 h-6 text-brand-400" />
             Deal Pipeline & Stage Governance
           </h1>
-          <p className="text-sm text-slate-400">Track active deals across approval, customer negotiation, and fulfillment order creation.</p>
+          <p className="text-sm text-slate-400">
+            Track active deals across approval, customer negotiation, and fulfillment order creation. Click any deal card to inspect terms or respond to counter-offers.
+          </p>
         </div>
 
         <button
@@ -100,11 +103,14 @@ export const PipelineKanbanPage: React.FC = () => {
                 {stageQuotes.map((quote) => (
                   <div
                     key={quote.id}
-                    className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-all shadow-md space-y-2.5"
+                    onClick={() => setSelectedQuoteId(quote.id)}
+                    className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-brand-500/60 transition-all shadow-md space-y-2.5 cursor-pointer group"
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="font-bold text-white text-xs tracking-tight">{quote.customer?.companyName}</div>
+                        <div className="font-bold text-white text-xs tracking-tight group-hover:text-brand-400 transition-colors">
+                          {quote.customer?.companyName}
+                        </div>
                         <div className="text-[10px] font-mono text-slate-400">{quote.quoteNumber}</div>
                       </div>
                       <Badge status={String(quote.riskScore)} type="risk" />
@@ -120,9 +126,22 @@ export const PipelineKanbanPage: React.FC = () => {
                     </div>
 
                     {/* Stage specific quick action */}
+                    {quote.status === 'NEGOTIATION' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedQuoteId(quote.id);
+                        }}
+                        className="w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-700 transition-all flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <MessageSquare className="w-3 h-3 text-purple-300" />
+                        Review Counter-Offer
+                      </button>
+                    )}
+
                     {quote.status === 'APPROVED' && (
                       <button
-                        onClick={() => handleConvertToOrder(quote.id)}
+                        onClick={(e) => handleConvertToOrder(quote.id, e)}
                         disabled={convertingId === quote.id}
                         className="w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-1 shadow-sm"
                       >
@@ -154,6 +173,15 @@ export const PipelineKanbanPage: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Quote Details & Counter Offer Review Modal */}
+      {selectedQuoteId && (
+        <QuoteDetailsModal
+          quoteId={selectedQuoteId}
+          onClose={() => setSelectedQuoteId(null)}
+          onQuoteUpdated={loadQuotes}
+        />
+      )}
     </div>
   );
 };

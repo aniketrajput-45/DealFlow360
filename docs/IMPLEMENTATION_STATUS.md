@@ -24,12 +24,33 @@
 | **Phase 12** | Restricted Customer Portal backend & negotiation flow | ✅ Completed | Verified counter-discount & re-approval routing |
 | **Phase 13** | Sales dashboard, deal health alerts, anomaly detection & Kanban | ✅ Completed | Verified stalled deals & discount anomaly rules |
 | **Phase 14** | Full UI Experience, Interactive Screens & Live Demo Polish | ✅ Completed | Verified zero-error build (`tsc && vite build`) & full E2E flow integration |
+| **Phase 15** | Dedicated Admin Workspace (System Health, Users, Products, Governance, Inventory, Audit Logs) | ✅ Completed | Verified backend ADMIN endpoints, RBAC enforcement, frontend builds & navigation |
 
 ## Approved Adjustments & Technical Decisions
 
 > [!IMPORTANT]
 > **1. Database Target: SQLite**
 > SQLite (`file:./prisma/dev.db`) is the chosen target database for this MVP/hackathon implementation. Prisma ORM is configured with the `sqlite` provider. Enums and relational constraints are modeled in Prisma schema in full alignment with SQLite capabilities.
+
+> [!NOTE]
+> **2. System Management Admin Role**
+> `ADMIN` role is defined in the `Role` model (`ADMIN`, `SALES_REP`, `SALES_MANAGER`, `FINANCE`, `CUSTOMER`). Admin user seeded as `admin@dealflow360.com`. The Admin workspace provides structured system health monitoring, RBAC role assignments, catalog management, pricing rules, discount guardrails, warehouse inventory inspection, subscription plan governance, upsell rules, and append-only audit trail logging.
+
+## 8. Dedicated Admin Workspace Implementation & Stabilization
+
+- **API Contract Audit & Error Fixes**:
+  - **Subscription Plans Endpoint**: Replaced non-existent endpoint `/api/subscriptions/plans` (which triggered 404s) with existing backend endpoint `/api/billing/subscriptions` (`api.billing.getSubscriptions()`).
+  - **`toLowerCase()` Crash**: Fixed by using `sub.billingInterval.toLowerCase()` (from Prisma schema enum `MONTHLY | QUARTERLY | YEARLY`) with fallback formatting for undefined/missing values, preventing React rendering exceptions.
+  - **Full API Audit**: Audited all 10 Admin sub-views (`stats`, `users`, `products`, `pricing-rules`, `discount-governance`, `customers`, `warehouses`, `subscriptions`, `upsell-rules`, `audit`). Ensured valid routes, correct HTTP methods (`GET`, `POST`, `PUT`), and defensive loading/empty/error states across all views.
+- **UI Architecture & Visual Density Restructuring**:
+  - **Left Sidebar Navigation**: Replaced dense horizontal top navbar with clean, grouped left sidebar (`AdminSidebar.tsx`):
+    - **OVERVIEW**: `Dashboard`
+    - **SALES CONFIGURATION**: `Products Catalog`, `Pricing Rules`, `Discount Governance`
+    - **OPERATIONS**: `Customers Directory`, `Warehouses & Stock`, `Subscription Plans`, `Upsell / Cross-sell`
+    - **SYSTEM**: `Users & Roles`, `Audit Logs`
+  - **Clean Header**: Standardized headers to "Administration Console" with clean subtitles.
+  - **Dashboard Simplification**: Streamlined metric cards into 2 clean 4-card grid rows (Row 1: Total Users, Active Customers, Active Products, Active Deals; Row 2: Pending Approvals, Active Orders, Outstanding Invoices, Active Subscriptions), compact system shortcuts, and real audit trail event feeds.
+  - **Dev Demo Role Switcher**: Visually demarcated the dev role switcher as `[Dev Demo Switcher]` so it does not clutter production workspace navigation.
 
 > [!NOTE]
 > **2. Rule-Based Deal Health & Pipeline**
@@ -82,11 +103,35 @@
 
 ---
 
-## 6. Known Issues
-- None at kickoff.
+## 7. Golden Demo Dataset & Workflow Validation
 
----
-
-## 7. Validation Status
-- Phase 1 kickoff review: COMPLETE.
-- Comprehensive end-to-end verification plan established.
+- **Status:** Created & Fully Validated via `npm run db:seed`.
+- **Actual Counts:**
+  - Users: 4 (`rep@dealflow360.com`, `manager@dealflow360.com`, `finance@dealflow360.com`, `customer@abccorp.com`)
+  - Customers: 3 (`ABC Corp` - Gold, `Nova Systems` - Silver, `Urban Retail` - Bronze)
+  - Products: 8 (4 Hardware, 2 Services, 2 Subscriptions)
+  - Product Categories: 3 (Hardware, Services, Subscriptions)
+  - Warehouses: 2 (`WH-MUM` Mumbai, `WH-KOL` Kolkata)
+  - Quotations: 6
+  - Quote Items: 10
+  - Approvals: 3
+  - Orders: 2
+  - Warehouse Allocations: 3 (Multi-warehouse split verified: 4 WH-MUM + 6 WH-KOL for 10 laptops)
+  - Invoices: 2 (1 PAID, 1 ISSUED)
+  - Payments: 1
+  - Subscriptions: 1 (ACTIVE)
+  - Negotiations: 1 (PENDING counter-offer)
+  - Audit Logs: 3 (Append-only audit trail)
+- **Workflows Represented & Validated:**
+  - Normal Deal → Low Risk → Order
+  - High-Risk Deal → Risk Engine Evaluation → Multi-Level Approval
+  - Approval Workflow → Manager & Finance Sign-Off
+  - Warehouse Split → Multi-Warehouse Stock Allocation Engine
+  - Hybrid Billing → One-Time Invoices + Recurring Subscriptions
+  - Customer Negotiation → Counter-Offer & Risk Recalculation
+  - Acceptance & Payment → Invoice Reconciliation (`UNPAID` → `PAID`)
+  - Active Subscriptions → Recurring Billing Schedules
+  - Audit Trail & Timestamp Distribution across recent weeks
+- **Note on Scaling:**
+  - The preliminary Golden Demo Dataset has been created and validated against all business logic engines.
+  - The final 200+ transaction dataset has **NOT** yet been generated and will be scaled after final dataset pattern approval.

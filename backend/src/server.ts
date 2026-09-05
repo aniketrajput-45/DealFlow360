@@ -13,6 +13,7 @@ import billingRouter from './modules/billing/billing.routes';
 import negotiationsRouter from './modules/negotiations/negotiations.routes';
 import reportingRouter from './modules/reporting/reporting.routes';
 import auditRouter from './modules/audit/audit.routes';
+import adminRouter from './modules/admin/admin.routes';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use('/api/billing', billingRouter);
 app.use('/api/negotiations', negotiationsRouter);
 app.use('/api/reporting', reportingRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

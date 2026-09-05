@@ -11,6 +11,10 @@ import {
   Clock,
   DollarSign,
   TrendingUp,
+  Shield,
+  Sparkles,
+  Warehouse,
+  History,
   LucideIcon,
 } from 'lucide-react';
 
@@ -28,6 +32,22 @@ export interface RoleNavConfig {
 }
 
 export const ROLE_NAVIGATION: Record<string, RoleNavConfig> = {
+  ADMIN: {
+    roleName: 'System Administrator',
+    primaryGoal: 'Manage system configurations, RBAC users, product catalogs, discount governance, and audit trails',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'users', label: 'Users & Roles', icon: Users },
+      { id: 'products', label: 'Products', icon: Package },
+      { id: 'pricing', label: 'Pricing Rules', icon: DollarSign },
+      { id: 'discount-governance', label: 'Discount Governance', icon: Shield },
+      { id: 'customers', label: 'Customers', icon: Users },
+      { id: 'warehouses', label: 'Warehouses & Stock', icon: Warehouse },
+      { id: 'subscriptions', label: 'Subscription Plans', icon: Clock },
+      { id: 'upsell', label: 'Upsell Rules', icon: Sparkles },
+      { id: 'audit', label: 'Audit Logs', icon: History },
+    ],
+  },
   SALES_REP: {
     roleName: 'Sales Representative',
     primaryGoal: 'Create and manage sales quotations and deals',

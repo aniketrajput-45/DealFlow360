@@ -132,3 +132,62 @@ export const getUpsellSuggestions = async (req: Request, res: Response): Promise
     res.status(500).json({ error: error.message || 'Failed to fetch upsell suggestions.' });
   }
 };
+
+export const createProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, categoryId, description, unit = 'unit', basePrice, costPrice = 0, taxPercent = 18, productType = 'ONE_TIME', billingInterval } = req.body;
+
+    if (!name || !categoryId || basePrice === undefined) {
+      res.status(400).json({ error: 'name, categoryId, and basePrice are required.' });
+      return;
+    }
+
+    const product = await prisma.product.create({
+      data: {
+        name,
+        categoryId,
+        description,
+        unit,
+        basePrice: parseFloat(basePrice),
+        costPrice: parseFloat(costPrice),
+        taxPercent: parseFloat(taxPercent),
+        productType,
+        billingInterval: productType === 'RECURRING' ? billingInterval || 'MONTHLY' : null,
+      },
+      include: { category: true },
+    });
+
+    res.status(201).json(product);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create product.' });
+  }
+};
+
+export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, categoryId, description, unit, basePrice, costPrice, taxPercent, productType, billingInterval, isActive } = req.body;
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        ...(name ? { name } : {}),
+        ...(categoryId ? { categoryId } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(unit ? { unit } : {}),
+        ...(basePrice !== undefined ? { basePrice: parseFloat(basePrice) } : {}),
+        ...(costPrice !== undefined ? { costPrice: parseFloat(costPrice) } : {}),
+        ...(taxPercent !== undefined ? { taxPercent: parseFloat(taxPercent) } : {}),
+        ...(productType ? { productType } : {}),
+        ...(billingInterval !== undefined ? { billingInterval } : {}),
+        ...(isActive !== undefined ? { isActive } : {}),
+      },
+      include: { category: true },
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update product.' });
+  }
+};
+

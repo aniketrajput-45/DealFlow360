@@ -4,6 +4,7 @@ import { SalesRepDashboard } from './SalesRepDashboard';
 import { SalesManagerDashboard } from './SalesManagerDashboard';
 import { FinanceDashboard } from './FinanceDashboard';
 import { CustomerDashboard } from './CustomerDashboard';
+import { AdminDashboard } from '../admin/AdminDashboard';
 
 interface Props {
   onNavigate: (tab: string) => void;
@@ -14,6 +15,8 @@ export const RoleDashboard: React.FC<Props> = ({ onNavigate }) => {
   const role = user?.role || 'SALES_REP';
 
   switch (role) {
+    case 'ADMIN':
+      return <AdminDashboard onNavigate={onNavigate} />;
     case 'SALES_MANAGER':
       return <SalesManagerDashboard onNavigate={onNavigate} />;
     case 'FINANCE':

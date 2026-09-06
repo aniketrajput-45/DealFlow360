@@ -10,6 +10,11 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:demo": "tsx prisma/seed_demo.ts",
+    "seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seed_demo.ts",
+    "reset:dev": "prisma db push --force-reset && tsx prisma/seed.ts",
+    "reset:demo": "prisma db push --force-reset && tsx prisma/seed_demo.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {

@@ -235,17 +235,21 @@ export const getQuotations = async (req: Request, res: Response): Promise<void> 
   try {
     const { status, customerId } = req.query;
 
-    // Customer scoping: Customer role only sees their own quotes!
-    let customerFilter: any = {};
+    // Record-level Authorization Filtering:
+    // 1. CUSTOMER role only sees quotations for their customerId
+    // 2. SALES_REP role only sees quotations created by themselves (createdById = req.user.id)
+    let roleFilter: any = {};
     if (req.user?.role === 'CUSTOMER') {
-      customerFilter = { customerId: req.user.customerId || 'NONE' };
+      roleFilter = { customerId: req.user.customerId || 'NONE' };
+    } else if (req.user?.role === 'SALES_REP') {
+      roleFilter = { createdById: req.user.id };
     } else if (customerId) {
-      customerFilter = { customerId: customerId as string };
+      roleFilter = { customerId: customerId as string };
     }
 
     const quotes = await prisma.quotation.findMany({
       where: {
-        ...customerFilter,
+        ...roleFilter,
         ...(status ? { status: status as string } : {}),
       },
       include: {
@@ -270,7 +274,7 @@ export const getQuotations = async (req: Request, res: Response): Promise<void> 
           select: { id: true, orderNumber: true, status: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
 
     res.json(quotes);
@@ -348,6 +352,12 @@ export const getQuotationById = async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    // Boundary check for Sales Rep role:
+    if (req.user?.role === 'SALES_REP' && quote.createdById !== req.user.id) {
+      res.status(403).json({ error: 'Access denied. You can only access your own quotations.' });
+      return;
+    }
+
     // For customers, omit internal cost prices and margin amounts from response
     if (req.user?.role === 'CUSTOMER') {
       const sanitized = {
@@ -388,6 +398,11 @@ export const addQuoteComment = async (req: Request, res: Response): Promise<void
     }
 
     if (req.user?.role === 'CUSTOMER' && quote.customerId !== req.user.customerId) {
+      res.status(403).json({ error: 'Access denied.' });
+      return;
+    }
+
+    if (req.user?.role === 'SALES_REP' && quote.createdById !== req.user.id) {
       res.status(403).json({ error: 'Access denied.' });
       return;
     }

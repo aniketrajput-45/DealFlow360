@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 interface Props {
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, params?: { approvalId?: string; quoteId?: string }) => void;
 }
 
 export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
@@ -149,7 +149,7 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
               return (
                 <div
                   key={appr.id}
-                  onClick={() => setSelectedQuoteId(appr.quotationId)}
+                  onClick={() => onNavigate('approvals', { approvalId: appr.id })}
                   className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-amber-500/50 cursor-pointer transition-all flex items-center justify-between group"
                 >
                   <div>
@@ -171,7 +171,7 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedQuoteId(appr.quotationId);
+                        onNavigate('approvals', { approvalId: appr.id });
                       }}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm"
                     >

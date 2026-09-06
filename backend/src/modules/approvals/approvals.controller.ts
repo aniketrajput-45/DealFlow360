@@ -5,12 +5,12 @@ import { AuditService } from '../audit/audit.service';
 export const getPendingApprovals = async (req: Request, res: Response): Promise<void> => {
   try {
     const userRole = req.user?.role;
-    const { status = 'PENDING' } = req.query;
+    const { status } = req.query;
+
+    const statusFilter = status && status !== 'ALL' ? { status: status as string } : {};
 
     const approvals = await prisma.approval.findMany({
-      where: {
-        ...(status ? { status: status as string } : {}),
-      },
+      where: statusFilter,
       include: {
         quotation: {
           include: {
@@ -26,10 +26,10 @@ export const getPendingApprovals = async (req: Request, res: Response): Promise<
           orderBy: { createdAt: 'desc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
 
-    // Tag each approval with whether the current user is eligible to act on it, and filter queue for role relevance
+    // Tag each approval with whether the current user is eligible to act on it, and filter for role relevance
     const enhanced = approvals
       .map((a) => {
         let canAct = false;
@@ -42,19 +42,26 @@ export const getPendingApprovals = async (req: Request, res: Response): Promise<
         if (userRole === 'ADMIN') {
           canAct = a.status === 'PENDING';
         } else if (userRole === 'SALES_MANAGER') {
-          // Sales Manager can act if single-step SALES_MANAGER, or if multi-step and manager hasn't acted yet
           canAct = a.status === 'PENDING' && (a.approvalLevel === 'SALES_MANAGER' || (a.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && !managerAction));
         } else if (userRole === 'FINANCE') {
-          // Finance can act if single-step FINANCE, or if multi-step and Sales Manager has already approved
           canAct = a.status === 'PENDING' && (a.approvalLevel === 'FINANCE' || (a.approvalLevel === 'SALES_MANAGER_AND_FINANCE' && managerApproved));
+        }
+
+        // Determine if approval is relevant to current role for history stacks
+        let isRoleRelevant = true;
+        if (userRole === 'SALES_MANAGER') {
+          isRoleRelevant = a.approvalLevel === 'SALES_MANAGER' || a.approvalLevel === 'SALES_MANAGER_AND_FINANCE';
+        } else if (userRole === 'FINANCE') {
+          isRoleRelevant = a.approvalLevel === 'FINANCE' || a.approvalLevel === 'SALES_MANAGER_AND_FINANCE';
         }
 
         return {
           ...a,
           canAct,
+          isRoleRelevant,
         };
       })
-      .filter((a) => (status === 'PENDING' && userRole !== 'ADMIN' ? a.canAct : true));
+      .filter((a) => a.isRoleRelevant);
 
     res.json(enhanced);
   } catch (error: any) {

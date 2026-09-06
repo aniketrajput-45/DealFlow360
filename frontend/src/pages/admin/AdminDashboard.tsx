@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Shield,
   DollarSign,
+  Sparkles,
 } from 'lucide-react';
 
 interface Props {
@@ -120,7 +121,7 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigate }) => {
       {/* System Shortcuts */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
         <h2 className="text-base font-semibold text-slate-200 mb-4">System Administration Controls</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div onClick={() => onNavigate('discount-governance')} className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/40 hover:border-slate-600 cursor-pointer flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Shield className="w-4 h-4 text-emerald-400" />
@@ -141,6 +142,14 @@ export const AdminDashboard: React.FC<Props> = ({ onNavigate }) => {
             <div className="flex items-center gap-2.5">
               <Warehouse className="w-4 h-4 text-indigo-400" />
               <span className="text-xs font-medium text-slate-200">Warehouse Inventory</span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+          </div>
+
+          <div onClick={() => onNavigate('upsell')} className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/40 hover:border-slate-600 cursor-pointer flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-medium text-slate-200">Upsell Rules</span>
             </div>
             <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
           </div>

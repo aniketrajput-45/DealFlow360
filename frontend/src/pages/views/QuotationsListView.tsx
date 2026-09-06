@@ -54,60 +54,68 @@ export const QuotationsListView: React.FC = () => {
       </div>
 
       <div className="bg-slate-900/70 rounded-2xl border border-slate-800 p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 text-slate-400 uppercase font-mono border-b border-slate-800">
-              <tr>
-                <th className="p-3">Quote #</th>
-                <th className="p-3">Customer</th>
-                <th className="p-3">Total Amount</th>
-                <th className="p-3">Blended Discount</th>
-                <th className="p-3">Margin %</th>
-                <th className="p-3">Risk Score</th>
-                <th className="p-3">Status</th>
-                <th className="p-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredQuotes.map((q) => {
-                const subtotal = q.subtotal || 1;
-                const discPercent = (q.discountAmount / subtotal) * 100;
-                const marginPercent = q.totalAmount > 0 ? (q.totalMargin / q.totalAmount) * 100 : 0;
+        {filteredQuotes.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 space-y-2">
+            <FileText className="w-12 h-12 text-slate-600 mx-auto opacity-50" />
+            <p className="text-base font-semibold text-slate-300">No quotations assigned to you yet.</p>
+            <p className="text-xs text-slate-500">Quotations created by you or assigned to your account will appear here.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950 text-slate-400 uppercase font-mono border-b border-slate-800">
+                <tr>
+                  <th className="p-3">Quote #</th>
+                  <th className="p-3">Customer</th>
+                  <th className="p-3">Total Amount</th>
+                  <th className="p-3">Blended Discount</th>
+                  <th className="p-3">Margin %</th>
+                  <th className="p-3">Risk Score</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {filteredQuotes.map((q) => {
+                  const subtotal = q.subtotal || 1;
+                  const discPercent = (q.discountAmount / subtotal) * 100;
+                  const marginPercent = q.totalAmount > 0 ? (q.totalMargin / q.totalAmount) * 100 : 0;
 
-                return (
-                  <tr
-                    key={q.id}
-                    onClick={() => setSelectedQuoteId(q.id)}
-                    className="hover:bg-slate-800/50 cursor-pointer transition-all group"
-                  >
-                    <td className="p-3 font-mono font-bold text-white group-hover:text-brand-400 transition-colors">
-                      {q.quoteNumber}
-                    </td>
-                    <td className="p-3 font-semibold text-slate-200">{q.customer?.companyName}</td>
-                    <td className="p-3 font-mono font-bold text-white">₹{q.totalAmount.toLocaleString()}</td>
-                    <td className="p-3 font-mono text-rose-400">{discPercent.toFixed(1)}%</td>
-                    <td className="p-3 font-mono text-emerald-400">{marginPercent.toFixed(1)}%</td>
-                    <td className="p-3">
-                      <Badge status={String(q.riskScore)} type="risk" />
-                    </td>
-                    <td className="p-3">
-                      <Badge status={q.status} />
-                    </td>
-                    <td className="p-3 text-right">
-                      {q.status === 'NEGOTIATION' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-950 text-purple-300 font-semibold border border-purple-800">
-                          <MessageSquare className="w-3 h-3" /> Counter-Offer
-                        </span>
-                      ) : (
-                        <span className="text-brand-400 font-semibold hover:underline">View Details</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr
+                      key={q.id}
+                      onClick={() => setSelectedQuoteId(q.id)}
+                      className="hover:bg-slate-800/50 cursor-pointer transition-all group"
+                    >
+                      <td className="p-3 font-mono font-bold text-white group-hover:text-brand-400 transition-colors">
+                        {q.quoteNumber}
+                      </td>
+                      <td className="p-3 font-semibold text-slate-200">{q.customer?.companyName}</td>
+                      <td className="p-3 font-mono font-bold text-white">₹{q.totalAmount.toLocaleString()}</td>
+                      <td className="p-3 font-mono text-rose-400">{discPercent.toFixed(1)}%</td>
+                      <td className="p-3 font-mono text-emerald-400">{marginPercent.toFixed(1)}%</td>
+                      <td className="p-3">
+                        <Badge status={String(q.riskScore)} type="risk" />
+                      </td>
+                      <td className="p-3">
+                        <Badge status={q.status} />
+                      </td>
+                      <td className="p-3 text-right">
+                        {q.status === 'NEGOTIATION' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-950 text-purple-300 font-semibold border border-purple-800">
+                            <MessageSquare className="w-3 h-3" /> Counter-Offer
+                          </span>
+                        ) : (
+                          <span className="text-brand-400 font-semibold hover:underline">View Details</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Quote Details & Counter Offer Review Modal */}

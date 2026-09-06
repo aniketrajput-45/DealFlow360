@@ -105,15 +105,20 @@ export const AdminCustomersView: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-                        c.tier === 'GOLD' || c.tier === 'PLATINUM' 
-                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                          : c.tier === 'SILVER'
-                          ? 'bg-slate-500/10 text-slate-300 border-slate-500/30'
-                          : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                      }`}>
-                        {c.tier}
-                      </span>
+                      {(() => {
+                        const tierName = typeof c.tier === 'object' && c.tier ? (c.tier as any).name : c.tier || 'STANDARD';
+                        return (
+                          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
+                            tierName === 'GOLD' || tierName === 'PLATINUM' 
+                              ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                              : tierName === 'SILVER'
+                              ? 'bg-slate-500/10 text-slate-300 border-slate-500/30'
+                              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          }`}>
+                            {tierName}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3.5 px-4 text-center font-medium">
                       <span className="inline-flex items-center px-2 py-0.5 bg-slate-800 text-slate-300 text-xs rounded">

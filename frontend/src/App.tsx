@@ -76,6 +76,7 @@ function AppContent() {
     const hash = window.location.hash.replace('#', '');
     return hash || 'dashboard';
   });
+  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
 
   // Reactive Hash Change Listener
   useEffect(() => {
@@ -111,7 +112,10 @@ function AppContent() {
     }
   };
 
-  const handleNavigate = (tab: string) => {
+  const handleNavigate = (tab: string, params?: { approvalId?: string; quoteId?: string }) => {
+    if (params?.approvalId) {
+      setSelectedApprovalId(params.approvalId);
+    }
     handleSetCurrentTab(tab);
   };
 
@@ -164,7 +168,7 @@ function AppContent() {
               {currentTab === 'create-quote' && <QuoteBuilderPage onQuoteCreated={() => handleSetCurrentTab('pipeline')} />}
               {currentTab === 'customers' && (role === 'ADMIN' ? <AdminCustomersView /> : <CustomerListView />)}
               {currentTab === 'products' && (role === 'ADMIN' ? <AdminProductsView /> : <ProductCatalogView />)}
-              {currentTab === 'approvals' && <ApprovalsPage />}
+              {currentTab === 'approvals' && <ApprovalsPage initialSelectedApprovalId={selectedApprovalId} />}
               {currentTab === 'health' && <DealHealthPage />}
               {currentTab === 'team' && <TeamPerformanceView />}
               {currentTab === 'invoices' && <BillingPage defaultSubTab="invoices" />}

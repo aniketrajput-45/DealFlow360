@@ -68,6 +68,20 @@ export const api = {
       fetch(`${API_BASE}/products/upsell/${productId}`, { headers: getAuthHeaders() }).then((r) =>
         handleResponse<UpsellSuggestion[]>(r)
       ),
+
+    create: (data: any) =>
+      fetch(`${API_BASE}/products`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<Product>(r)),
+
+    update: (id: string, data: any) =>
+      fetch(`${API_BASE}/products/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<Product>(r)),
   },
 
   // Customers
@@ -122,7 +136,7 @@ export const api = {
 
   // Approvals
   approvals: {
-    getAll: (status = 'PENDING') =>
+    getAll: (status = 'ALL') =>
       fetch(`${API_BASE}/approvals?status=${status}`, { headers: getAuthHeaders() }).then((r) =>
         handleResponse<Approval[]>(r)
       ),
@@ -267,6 +281,13 @@ export const api = {
     getUsers: () =>
       fetch(`${API_BASE}/admin/users`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
 
+    createUser: (data: { name: string; email: string; roleName: string; password?: string; customerId?: string }) =>
+      fetch(`${API_BASE}/admin/users`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<any>(r)),
+
     updateUserRole: (id: string, roleName: string) =>
       fetch(`${API_BASE}/admin/users/${id}/role`, {
         method: 'PUT',
@@ -277,11 +298,65 @@ export const api = {
     getPricingRules: () =>
       fetch(`${API_BASE}/admin/pricing-rules`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
 
+    createPricingRule: (data: { productId: string; customerTierId?: string; price: number; currency?: string }) =>
+      fetch(`${API_BASE}/admin/pricing-rules`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<any>(r)),
+
+    updatePricingRule: (id: string, data: { price?: number; isActive?: boolean }) =>
+      fetch(`${API_BASE}/admin/pricing-rules/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<any>(r)),
+
+    deletePricingRule: (id: string) =>
+      fetch(`${API_BASE}/admin/pricing-rules/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      }).then((r) => handleResponse<any>(r)),
+
     getDiscountGovernance: () =>
       fetch(`${API_BASE}/admin/discount-governance`, { headers: getAuthHeaders() }).then((r) => handleResponse<any>(r)),
 
+    updateCustomerTierCeiling: (tierId: string, maxDiscountPercent: number) =>
+      fetch(`${API_BASE}/admin/discount-governance/tier/${tierId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ maxDiscountPercent }),
+      }).then((r) => handleResponse<any>(r)),
+
+    updateCategoryDiscountRule: (categoryId: string, maxDiscountPercent: number, approvalLevel?: string) =>
+      fetch(`${API_BASE}/admin/discount-governance/category/${categoryId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ maxDiscountPercent, approvalLevel }),
+      }).then((r) => handleResponse<any>(r)),
+
     getUpsellRules: () =>
       fetch(`${API_BASE}/admin/upsell-rules`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),
+
+    createUpsellRule: (data: { sourceProductId: string; suggestedProductId: string; promotionTag?: string; priority?: number }) =>
+      fetch(`${API_BASE}/admin/upsell-rules`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<any>(r)),
+
+    updateUpsellRule: (id: string, data: { promotionTag?: string; priority?: number; isActive?: boolean }) =>
+      fetch(`${API_BASE}/admin/upsell-rules/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<any>(r)),
+
+    deleteUpsellRule: (id: string) =>
+      fetch(`${API_BASE}/admin/upsell-rules/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      }).then((r) => handleResponse<any>(r)),
 
     getLogs: () =>
       fetch(`${API_BASE}/audit`, { headers: getAuthHeaders() }).then((r) => handleResponse<any[]>(r)),

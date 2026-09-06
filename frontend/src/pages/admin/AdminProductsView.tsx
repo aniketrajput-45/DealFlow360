@@ -68,7 +68,7 @@ export const AdminProductsView: React.FC = () => {
 
     try {
       if (editingProduct) {
-        await (api.products as any).update(editingProduct.id, {
+        await api.products.update(editingProduct.id, {
           name,
           categoryId,
           description,
@@ -81,7 +81,7 @@ export const AdminProductsView: React.FC = () => {
         });
         setNotice(`Product '${name}' updated successfully.`);
       } else {
-        await (api.products as any).create({
+        await api.products.create({
           name,
           categoryId,
           description,

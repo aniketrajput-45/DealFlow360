@@ -38,7 +38,11 @@ export const getWarehousesWithInventory = async (_req: Request, res: Response): 
       where: { isActive: true },
       include: {
         inventory: {
-          include: { product: true },
+          include: {
+            product: {
+              include: { category: true },
+            },
+          },
         },
       },
       orderBy: { shippingCostWeight: 'asc' },

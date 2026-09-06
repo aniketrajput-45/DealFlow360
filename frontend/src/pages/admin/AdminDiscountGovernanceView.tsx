@@ -1,23 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/client';
-import { Award, Layers, ShieldCheck } from 'lucide-react';
+import { Award, Layers, ShieldCheck, Edit, X } from 'lucide-react';
 
 interface DiscountGovData {
   customerTiers: Array<{
     id: string;
-    tier: string;
-    maxDiscountPercentage: number;
+    name: string;
+    maxDiscountPercent: number;
   }>;
   categoryCeilings: Array<{
-    id: string;
-    category: string;
-    maxDiscountPercentage: number;
+    categoryId: string;
+    categoryName: string;
+    maxDiscountPercent: number;
+    approvalLevel: string;
   }>;
 }
 
 export const AdminDiscountGovernanceView: React.FC = () => {
   const [data, setData] = useState<DiscountGovData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Edit Modal State
+  const [editingTier, setEditingTier] = useState<{ id: string; name: string; maxDiscountPercent: number } | null>(null);
+  const [editingCategory, setEditingCategory] = useState<{ categoryId: string; categoryName: string; maxDiscountPercent: number; approvalLevel: string } | null>(null);
+  const [newMaxDiscount, setNewMaxDiscount] = useState<number>(0);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -32,6 +39,46 @@ export const AdminDiscountGovernanceView: React.FC = () => {
       console.error('Failed to load discount governance data', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEditTier = (t: { id: string; name: string; maxDiscountPercent: number }) => {
+    setEditingTier(t);
+    setNewMaxDiscount(t.maxDiscountPercent);
+  };
+
+  const handleOpenEditCategory = (c: { categoryId: string; categoryName: string; maxDiscountPercent: number; approvalLevel: string }) => {
+    setEditingCategory(c);
+    setNewMaxDiscount(c.maxDiscountPercent);
+  };
+
+  const handleSaveTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTier) return;
+    setSubmitting(true);
+    try {
+      await api.admin.updateCustomerTierCeiling(editingTier.id, newMaxDiscount);
+      setEditingTier(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update tier discount ceiling.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    setSubmitting(true);
+    try {
+      await api.admin.updateCategoryDiscountRule(editingCategory.categoryId, newMaxDiscount, editingCategory.approvalLevel);
+      setEditingCategory(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update category discount ceiling.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -64,11 +111,20 @@ export const AdminDiscountGovernanceView: React.FC = () => {
           <div className="space-y-3">
             {data?.customerTiers && data.customerTiers.length > 0 ? (
               data.customerTiers.map((tier) => (
-                <div key={tier.id || tier.tier} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                  <span className="font-medium text-slate-200">{tier.tier} Tier</span>
-                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-sm font-semibold rounded-full border border-emerald-500/20">
-                    Max {tier.maxDiscountPercentage}%
-                  </span>
+                <div key={tier.id || tier.name} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                  <span className="font-medium text-slate-200">{tier.name} Tier</span>
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-sm font-semibold rounded-full border border-emerald-500/20">
+                      Max {tier.maxDiscountPercent}%
+                    </span>
+                    <button
+                      onClick={() => handleOpenEditTier(tier)}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700"
+                      title="Edit Tier Ceiling"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (
@@ -94,11 +150,20 @@ export const AdminDiscountGovernanceView: React.FC = () => {
           <div className="space-y-3">
             {data?.categoryCeilings && data.categoryCeilings.length > 0 ? (
               data.categoryCeilings.map((cat) => (
-                <div key={cat.id || cat.category} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                  <span className="font-medium text-slate-200">{cat.category}</span>
-                  <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-sm font-semibold rounded-full border border-blue-500/20">
-                    Max {cat.maxDiscountPercentage}%
-                  </span>
+                <div key={cat.categoryId || cat.categoryName} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                  <span className="font-medium text-slate-200">{cat.categoryName}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-sm font-semibold rounded-full border border-blue-500/20">
+                      Max {cat.maxDiscountPercent}%
+                    </span>
+                    <button
+                      onClick={() => handleOpenEditCategory(cat)}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700"
+                      title="Edit Category Ceiling"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (
@@ -155,6 +220,100 @@ export const AdminDiscountGovernanceView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Edit Tier Modal */}
+      {editingTier && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="text-lg font-bold text-white">Edit {editingTier.name} Tier Discount Ceiling</h3>
+              <button onClick={() => setEditingTier(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTier} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1">Max Discount Ceiling (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={newMaxDiscount}
+                  onChange={(e) => setNewMaxDiscount(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingTier(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20"
+                >
+                  {submitting ? 'Saving...' : 'Save Tier Ceiling'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="text-lg font-bold text-white">Edit {editingCategory.categoryName} Discount Ceiling</h3>
+              <button onClick={() => setEditingCategory(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCategory} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1">Max Category Discount Ceiling (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={newMaxDiscount}
+                  onChange={(e) => setNewMaxDiscount(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20"
+                >
+                  {submitting ? 'Saving...' : 'Save Category Ceiling'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

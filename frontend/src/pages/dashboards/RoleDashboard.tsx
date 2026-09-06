@@ -7,7 +7,7 @@ import { CustomerDashboard } from './CustomerDashboard';
 import { AdminDashboard } from '../admin/AdminDashboard';
 
 interface Props {
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, params?: { approvalId?: string; quoteId?: string }) => void;
 }
 
 export const RoleDashboard: React.FC<Props> = ({ onNavigate }) => {

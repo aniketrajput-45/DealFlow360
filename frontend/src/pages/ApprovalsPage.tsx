@@ -5,7 +5,11 @@ import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
 import { CheckSquare, CheckCircle2, XCircle, AlertCircle, ShieldAlert, History } from 'lucide-react';
 
-export const ApprovalsPage: React.FC = () => {
+interface Props {
+  initialSelectedApprovalId?: string | null;
+}
+
+export const ApprovalsPage: React.FC<Props> = ({ initialSelectedApprovalId }) => {
   const { user } = useAuth();
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
@@ -15,14 +19,23 @@ export const ApprovalsPage: React.FC = () => {
 
   const loadApprovals = () => {
     api.approvals
-      .getAll('PENDING')
+      .getAll('ALL')
       .then((data) => {
         setApprovals(data);
-        if (data.length > 0 && !selectedApproval) {
-          setSelectedApproval(data[0]);
-        } else if (selectedApproval) {
-          const refreshed = data.find((d) => d.id === selectedApproval.id);
-          setSelectedApproval(refreshed || data[0] || null);
+        if (data.length > 0) {
+          if (initialSelectedApprovalId) {
+            const target = data.find((d) => d.id === initialSelectedApprovalId || d.quotationId === initialSelectedApprovalId);
+            if (target) {
+              setSelectedApproval(target);
+              return;
+            }
+          }
+          if (!selectedApproval) {
+            setSelectedApproval(data[0]);
+          } else {
+            const refreshed = data.find((d) => d.id === selectedApproval.id);
+            setSelectedApproval(refreshed || data[0] || null);
+          }
         }
       });
   };
@@ -46,7 +59,7 @@ export const ApprovalsPage: React.FC = () => {
       setActionReason('');
       
       // Fetch fresh approvals and update currently selected item
-      const freshData = await api.approvals.getAll('PENDING');
+      const freshData = await api.approvals.getAll('ALL');
       setApprovals(freshData);
       const refreshedItem = freshData.find((d) => d.id === selectedApproval.id);
       setSelectedApproval(refreshedItem || freshData[0] || null);
@@ -55,6 +68,56 @@ export const ApprovalsPage: React.FC = () => {
     } finally {
       setProcessing(false);
     }
+  };
+
+  // Stack Helper: sort by latest timestamp (Approval.updatedAt or latest action createdAt)
+  const getApprovalTimestamp = (app: Approval) => {
+    if (app.actions && app.actions.length > 0) {
+      const actionTimes = app.actions.map((a) => new Date(a.createdAt || 0).getTime());
+      return Math.max(...actionTimes, new Date((app as any).updatedAt || 0).getTime());
+    }
+    return new Date((app as any).updatedAt || (app as any).createdAt || 0).getTime();
+  };
+
+  const sortStack = (list: Approval[]) => {
+    return [...list].sort((a, b) => getApprovalTimestamp(b) - getApprovalTimestamp(a));
+  };
+
+  // Group into Stacks based on status and user eligibility
+  const pendingStack = sortStack(approvals.filter((a) => a.status === 'PENDING' && (a as any).canAct !== false));
+  const awaitingOtherStack = sortStack(approvals.filter((a) => a.status === 'PENDING' && (a as any).canAct === false));
+  const approvedStack = sortStack(approvals.filter((a) => a.status === 'APPROVED'));
+  const rejectedStack = sortStack(approvals.filter((a) => a.status === 'REJECTED'));
+
+  const renderApprovalCard = (app: Approval) => {
+    const isSelected = selectedApproval?.id === app.id;
+    return (
+      <div
+        key={app.id}
+        onClick={() => setSelectedApproval(app)}
+        className={`p-4 rounded-xl border transition-all cursor-pointer ${
+          isSelected
+            ? 'bg-slate-800/90 border-brand-500 shadow-md ring-1 ring-brand-500/20'
+            : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+        }`}
+      >
+        <div className="flex items-start justify-between mb-1.5">
+          <div>
+            <div className="font-bold text-white text-xs">{app.quotation?.customer?.companyName}</div>
+            <div className="text-[10px] font-mono text-slate-400">{app.quotation?.quoteNumber}</div>
+          </div>
+          <Badge status={String(app.riskScore)} type="risk" />
+        </div>
+
+        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/60">
+          <span className="font-bold text-white font-mono">₹{app.quotation?.totalAmount.toLocaleString()}</span>
+          <div className="flex items-center gap-1.5">
+            <Badge status={app.status} />
+            <Badge status={app.approvalLevel} type="approval" />
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -96,52 +159,78 @@ export const ApprovalsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Grid: Pending List on Left, Active Review on Right */}
+      {/* Grid: Stacks List on Left, Active Review on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Queue */}
-        <div className="lg:col-span-5 space-y-3">
+        {/* Left: Stacked Queue */}
+        <div className="lg:col-span-5 space-y-6">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Pending Approvals ({approvals.length})
+              Approval Queue & History ({approvals.length})
             </span>
             <button onClick={loadApprovals} className="text-xs text-brand-400 hover:underline">
               Refresh
             </button>
           </div>
 
-          {approvals.length === 0 ? (
-            <div className="p-8 text-center bg-slate-900/50 rounded-2xl border border-slate-800 text-slate-500 text-xs">
-              No pending quotations require your approval at this time.
+          {/* STACK 1: ACTION REQUIRED */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" /> ACTION REQUIRED ({pendingStack.length})
+              </h2>
             </div>
-          ) : (
-            approvals.map((app) => {
-              const isSelected = selectedApproval?.id === app.id;
-              return (
-                <div
-                  key={app.id}
-                  onClick={() => setSelectedApproval(app)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-slate-800/90 border-brand-500 shadow-md ring-1 ring-brand-500/20'
-                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-1.5">
-                    <div>
-                      <div className="font-bold text-white text-xs">{app.quotation?.customer?.companyName}</div>
-                      <div className="text-[10px] font-mono text-slate-400">{app.quotation?.quoteNumber}</div>
-                    </div>
-                    <Badge status={String(app.riskScore)} type="risk" />
-                  </div>
+            {pendingStack.length === 0 ? (
+              <div className="p-4 text-center bg-slate-900/40 rounded-xl border border-slate-800/80 text-slate-500 text-xs italic">
+                No pending items require your immediate action.
+              </div>
+            ) : (
+              pendingStack.map(renderApprovalCard)
+            )}
+          </div>
 
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/60">
-                    <span className="font-bold text-white font-mono">₹{app.quotation?.totalAmount.toLocaleString()}</span>
-                    <Badge status={app.approvalLevel} type="approval" />
-                  </div>
-                </div>
-              );
-            })
+          {/* STACK 2: AWAITING PRIOR REVIEW (Multi-level) */}
+          {awaitingOtherStack.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-slate-800/80">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5" /> AWAITING MANAGER REVIEW ({awaitingOtherStack.length})
+                </h2>
+              </div>
+              {awaitingOtherStack.map(renderApprovalCard)}
+            </div>
           )}
+
+          {/* STACK 3: APPROVED */}
+          <div className="space-y-3 pt-2 border-t border-slate-800/80">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> APPROVED ({approvedStack.length})
+              </h2>
+            </div>
+            {approvedStack.length === 0 ? (
+              <div className="p-4 text-center bg-slate-900/40 rounded-xl border border-slate-800/80 text-slate-500 text-xs italic">
+                No approved records in history.
+              </div>
+            ) : (
+              approvedStack.map(renderApprovalCard)
+            )}
+          </div>
+
+          {/* STACK 4: REJECTED / REVISED */}
+          <div className="space-y-3 pt-2 border-t border-slate-800/80">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                <XCircle className="w-3.5 h-3.5" /> REJECTED / REVISED ({rejectedStack.length})
+              </h2>
+            </div>
+            {rejectedStack.length === 0 ? (
+              <div className="p-4 text-center bg-slate-900/40 rounded-xl border border-slate-800/80 text-slate-500 text-xs italic">
+                No rejected records in history.
+              </div>
+            ) : (
+              rejectedStack.map(renderApprovalCard)
+            )}
+          </div>
         </div>
 
         {/* Right: Selected Quotation Governance Audit */}

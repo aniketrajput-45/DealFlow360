@@ -40,18 +40,23 @@ export const AdminAuditLogsView: React.FC = () => {
   };
 
   const filteredLogs = logs.filter(log => {
+    const actionStr = (log.action || '').toLowerCase();
+    const entityStr = (log.entity || '').toLowerCase();
+    const userName = log.user?.name ? log.user.name.toLowerCase() : '';
+    const userEmail = log.user?.email ? log.user.email.toLowerCase() : '';
+
     const matchesSearch = 
-      log.action.toLowerCase().includes(search.toLowerCase()) ||
-      log.entity.toLowerCase().includes(search.toLowerCase()) ||
-      (log.user?.name && log.user.name.toLowerCase().includes(search.toLowerCase())) ||
-      (log.user?.email && log.user.email.toLowerCase().includes(search.toLowerCase()));
+      actionStr.includes(search.toLowerCase()) ||
+      entityStr.includes(search.toLowerCase()) ||
+      userName.includes(search.toLowerCase()) ||
+      userEmail.includes(search.toLowerCase());
     
-    const matchesEntity = entityFilter === 'ALL' || log.entity.toUpperCase() === entityFilter.toUpperCase();
+    const matchesEntity = entityFilter === 'ALL' || entityStr.toUpperCase() === entityFilter.toUpperCase();
 
     return matchesSearch && matchesEntity;
   });
 
-  const uniqueEntities = Array.from(new Set(logs.map(l => l.entity.toUpperCase())));
+  const uniqueEntities = Array.from(new Set(logs.map(l => (l.entity || 'SYSTEM').toUpperCase())));
 
   return (
     <div className="space-y-6">

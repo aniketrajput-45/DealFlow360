@@ -4,7 +4,7 @@ export class ReportingService {
   /**
    * Generates deterministic, rule-based deal health metrics and anomaly alerts.
    */
-  static async getDealHealthAndAlerts() {
+  static async getDealHealthAndAlerts(user?: any) {
     const config = (await prisma.dealHealthConfig.findUnique({ where: { id: 'default' } })) || {
       stalledDaysThreshold: 3,
       anomalyDiscountMultiplier: 1.5,
@@ -13,15 +13,26 @@ export class ReportingService {
     const now = new Date();
     const stalledCutoff = new Date(now.getTime() - config.stalledDaysThreshold * 24 * 60 * 60 * 1000);
 
-    // Fetch all active quotations
+    let roleFilter: any = {};
+    if (user?.role === 'SALES_REP') {
+      roleFilter = { createdById: user.id };
+    } else if (user?.role === 'CUSTOMER') {
+      roleFilter = { customerId: user.customerId || 'NONE' };
+    }
+
+    // Fetch all active quotations with approvals
     const activeQuotes = await prisma.quotation.findMany({
       where: {
         status: { in: ['DRAFT', 'PENDING_APPROVAL', 'NEGOTIATION'] },
+        ...roleFilter,
       },
       include: {
         customer: true,
         createdBy: true,
         items: true,
+        approvals: {
+          include: { actions: true },
+        },
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -72,11 +83,22 @@ export class ReportingService {
 
       // Anomaly trigger: quote discount exceeds rep's historical average by multiplier
       if (quoteDiscountPercent > repAvgDiscount * config.anomalyDiscountMultiplier && quoteDiscountPercent > 12) {
+        // Check if sales manager approval has been granted
+        const managerApproval = q.approvals?.find(
+          (a) => a.approvalLevel === 'SALES_MANAGER' || a.approvalLevel === 'SALES_MANAGER_AND_FINANCE'
+        );
+        const hasManagerApproved = managerApproval
+          ? managerApproval.actions?.some((act) => act.action === 'APPROVE') || managerApproval.status === 'APPROVED'
+          : false;
+
         discountAnomalies.push({
           id: q.id,
           quoteNumber: q.quoteNumber,
           customerName: q.customer.companyName,
           repName: q.createdBy.name,
+          status: q.status,
+          requiredApprovalLevel: q.requiredApprovalLevel,
+          hasManagerApproved,
           quoteDiscountPercent: Math.round(quoteDiscountPercent * 10) / 10,
           repHistoricalAvg: Math.round(repAvgDiscount * 10) / 10,
           excessFactor: Math.round((quoteDiscountPercent / Math.max(1, repAvgDiscount)) * 10) / 10,
@@ -124,8 +146,18 @@ export class ReportingService {
   /**
    * Generates high-level sales KPI overview and Kanban pipeline stages.
    */
-  static async getSalesOverview(filter?: { repId?: string; startDate?: Date; endDate?: Date }) {
+  static async getSalesOverview(user?: any) {
+    let quoteFilter: any = {};
+    let customerFilter: any = {};
+    if (user?.role === 'SALES_REP') {
+      quoteFilter = { createdById: user.id };
+    } else if (user?.role === 'CUSTOMER') {
+      quoteFilter = { customerId: user.customerId || 'NONE' };
+      customerFilter = { customerId: user.customerId || 'NONE' };
+    }
+
     const quotes = await prisma.quotation.findMany({
+      where: { ...quoteFilter },
       include: {
         customer: true,
         createdBy: true,
@@ -134,8 +166,18 @@ export class ReportingService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const orders = await prisma.order.findMany();
+    const orders = await prisma.order.findMany({
+      where: {
+        ...customerFilter,
+        ...(user?.role === 'SALES_REP' ? { quotation: { createdById: user.id } } : {}),
+      },
+    });
+
     const invoices = await prisma.invoice.findMany({
+      where: {
+        ...customerFilter,
+        ...(user?.role === 'SALES_REP' ? { order: { quotation: { createdById: user.id } } } : {}),
+      },
       include: { payments: true },
     });
 

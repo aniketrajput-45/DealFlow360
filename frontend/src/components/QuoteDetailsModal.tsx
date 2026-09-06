@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Quotation } from '../types';
 import { Badge } from './Badge';
+import { useAuth } from '../context/AuthContext';
 import {
   X,
   FileText,
@@ -11,6 +12,9 @@ import {
   MessageSquare,
   Send,
   ArrowRight,
+  Activity,
+  AlertTriangle,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Props {
@@ -20,6 +24,7 @@ interface Props {
 }
 
 export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUpdated }) => {
+  const { isCustomer } = useAuth();
   const [quote, setQuote] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -107,6 +112,25 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
     }
   };
 
+  const handleAcceptDeal = async () => {
+    if (!quote) return;
+    setSubmittingAction(true);
+    setFeedback(null);
+    try {
+      const order = await api.orders.convert(quote.id);
+      setFeedback({
+        type: 'success',
+        text: `Quotation #${quote.quoteNumber} accepted! Confirmed Order #${order.orderNumber} created.`,
+      });
+      loadQuote();
+      if (onQuoteUpdated) onQuoteUpdated();
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Failed to accept deal.' });
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
   const pendingNeg = quote?.negotiations?.find((n) => n.status === 'PENDING');
 
   return (
@@ -158,6 +182,228 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
             <div className="py-12 text-center text-slate-500 italic">Loading quotation details...</div>
           ) : (
             <>
+              {/* 360-DEGREE DEAL HEALTH DIAGNOSTIC PANEL (Internal Staff Only) */}
+              {!isCustomer && (
+                <div className="p-5 rounded-2xl bg-slate-950 border border-brand-900/60 space-y-5 shadow-2xl">
+                  {/* Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-brand-500/10 text-brand-400 rounded-lg">
+                        <Activity className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">
+                        360° Deal Health & Surveillance Diagnostic
+                      </h3>
+                    </div>
+                    {(() => {
+                      const risk = quote.riskScore || 0;
+                      let badge = (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                          HEALTHY (Score: {risk})
+                        </span>
+                      );
+                      if (risk > 50 || quote.status === 'REJECTED') {
+                        badge = (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-950 text-rose-300 border border-rose-800">
+                            CRITICAL RISK (Score: {risk})
+                          </span>
+                        );
+                      } else if (risk > 20 || quote.status === 'PENDING_APPROVAL' || quote.status === 'NEGOTIATION') {
+                        badge = (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-950 text-amber-300 border border-amber-800">
+                            AT RISK / ATTENTION (Score: {risk})
+                          </span>
+                        );
+                      }
+                      return badge;
+                    })()}
+                  </div>
+
+                  {/* Section 1: Overview & Health Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-1.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deal Metadata Overview</div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                        <div><span className="text-slate-500">Sales Rep:</span> <span className="font-semibold text-slate-200">{quote.createdBy?.name || 'Enterprise Rep'}</span></div>
+                        <div><span className="text-slate-500">Customer:</span> <span className="font-semibold text-slate-200">{quote.customer?.companyName}</span></div>
+                        <div><span className="text-slate-500">Created:</span> <span className="font-mono text-slate-300">{new Date(quote.createdAt).toLocaleDateString()}</span></div>
+                        <div><span className="text-slate-500">Updated:</span> <span className="font-mono text-slate-300">{new Date(quote.updatedAt).toLocaleDateString()}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-1.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Diagnostic Health Summary</div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed pt-1">
+                        {(() => {
+                          const reasons: string[] = [];
+                          if (quote.discountAmount > 0) {
+                            const pct = Math.round((quote.discountAmount / (quote.subtotal || 1)) * 100);
+                            if (pct > 15) reasons.push(`High discount applied (${pct}%)`);
+                          }
+                          if (quote.status === 'PENDING_APPROVAL') reasons.push(`Governance approval pending (${quote.requiredApprovalLevel})`);
+                          if (quote.status === 'NEGOTIATION') reasons.push('Active customer negotiation');
+                          if (quote.order) reasons.push(`Converted to Order #${quote.order.orderNumber}`);
+
+                          return reasons.length > 0
+                            ? `Primary Factors: ${reasons.join(' • ')}.`
+                            : 'Standard commercial deal parameters within normal thresholds.';
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Health Factors Breakdown */}
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Deal Health Factor Matrix</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                      {/* Factor 1: Discount Risk */}
+                      {(() => {
+                        const pct = quote.subtotal > 0 ? (quote.discountAmount / quote.subtotal) * 100 : 0;
+                        const level = pct > 20 ? 'HIGH' : pct > 10 ? 'MEDIUM' : 'LOW';
+                        const color = level === 'HIGH' ? 'text-rose-400 border-rose-900/60 bg-rose-950/20' : level === 'MEDIUM' ? 'text-amber-400 border-amber-900/60 bg-amber-950/20' : 'text-emerald-400 border-emerald-900/60 bg-emerald-950/20';
+                        return (
+                          <div className={`p-2.5 rounded-xl border ${color}`}>
+                            <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Discount Risk</div>
+                            <div className="text-xs font-extrabold mt-0.5">{level} ({Math.round(pct)}%)</div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Factor 2: Approval Status */}
+                      {(() => {
+                        const level = quote.status === 'PENDING_APPROVAL' ? 'ATTENTION' : quote.status === 'REJECTED' ? 'CRITICAL' : 'CLEAR';
+                        const color = level === 'ATTENTION' ? 'text-amber-400 border-amber-900/60 bg-amber-950/20' : level === 'CRITICAL' ? 'text-rose-400 border-rose-900/60 bg-rose-950/20' : 'text-emerald-400 border-emerald-900/60 bg-emerald-950/20';
+                        return (
+                          <div className={`p-2.5 rounded-xl border ${color}`}>
+                            <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Governance</div>
+                            <div className="text-xs font-extrabold mt-0.5">{level}</div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Factor 3: Negotiation Activity */}
+                      {(() => {
+                        const hasActiveNeg = quote.negotiations?.some((n) => n.status === 'PENDING');
+                        const level = hasActiveNeg ? 'WARNING' : 'CLEAR';
+                        const color = level === 'WARNING' ? 'text-purple-400 border-purple-900/60 bg-purple-950/20' : 'text-emerald-400 border-emerald-900/60 bg-emerald-950/20';
+                        return (
+                          <div className={`p-2.5 rounded-xl border ${color}`}>
+                            <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Negotiation</div>
+                            <div className="text-xs font-extrabold mt-0.5">{level}</div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Factor 4: Payment / Fulfillment */}
+                      {(() => {
+                        const hasOrder = !!quote.order;
+                        const level = hasOrder ? 'ORDER CONFIRMED' : 'PRE-ORDER';
+                        return (
+                          <div className="p-2.5 rounded-xl border text-brand-300 border-brand-900/60 bg-brand-950/20">
+                            <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Lifecycle</div>
+                            <div className="text-xs font-extrabold mt-0.5">{level}</div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Section 3: Deal Timeline */}
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Real Chronological Lifecycle Timeline</div>
+                    <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                      {(() => {
+                        const timeline: Array<{ label: string; date: string; badge: string }> = [
+                          { label: 'Quotation Created', date: new Date(quote.createdAt).toLocaleString(), badge: 'CREATED' },
+                        ];
+
+                        if (quote.riskScore > 0) {
+                          timeline.push({ label: `Risk Evaluated (Blended Score: ${quote.riskScore})`, date: new Date(quote.createdAt).toLocaleString(), badge: 'RISK' });
+                        }
+
+                        if (quote.approvals && quote.approvals.length > 0) {
+                          for (const app of quote.approvals) {
+                            timeline.push({ label: `Approval Requested (${app.approvalLevel})`, date: new Date(app.createdAt).toLocaleString(), badge: 'GOVERNANCE' });
+                            for (const act of app.actions || []) {
+                              timeline.push({ label: `${act.action} by ${act.user?.name || 'Reviewer'} (${act.user?.role?.name || ''})`, date: new Date(act.createdAt).toLocaleString(), badge: 'ACTION' });
+                            }
+                          }
+                        }
+
+                        if (quote.negotiations && quote.negotiations.length > 0) {
+                          for (const neg of quote.negotiations) {
+                            timeline.push({ label: `Negotiation Counter-Offer (${neg.proposedDiscountPercent}% proposed)`, date: new Date(neg.createdAt).toLocaleString(), badge: 'NEGOTIATION' });
+                          }
+                        }
+
+                        if (quote.order) {
+                          const orderDate = quote.order.createdAt ? new Date(quote.order.createdAt).toLocaleString() : new Date(quote.updatedAt).toLocaleString();
+                          timeline.push({ label: `Order Confirmed (#${quote.order.orderNumber})`, date: orderDate, badge: 'ORDER' });
+                          if (quote.order.invoices) {
+                            for (const inv of quote.order.invoices) {
+                              timeline.push({ label: `Invoice Issued (#${inv.invoiceNumber})`, date: new Date(inv.createdAt).toLocaleString(), badge: 'BILLING' });
+                              for (const p of inv.payments || []) {
+                                timeline.push({ label: `Payment Received (₹${p.amount.toLocaleString()})`, date: new Date(p.paymentDate).toLocaleString(), badge: 'PAYMENT' });
+                              }
+                            }
+                          }
+                        }
+
+                        return timeline.map((t, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-[11px] py-1 border-b border-slate-800/40 last:border-0">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
+                              <span className="font-semibold text-slate-200">{t.label}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[10px] text-slate-400">{t.date}</span>
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-800 text-slate-300 border border-slate-700">{t.badge}</span>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Section 4: Current Bottleneck & Recommended Action */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-amber-900/40 space-y-1">
+                      <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Current Bottleneck
+                      </div>
+                      <div className="text-xs font-bold text-slate-100">
+                        {quote.status === 'PENDING_APPROVAL'
+                          ? `Awaiting ${quote.requiredApprovalLevel} Sign-off`
+                          : quote.status === 'NEGOTIATION'
+                          ? 'Active Customer Counter-Offer Under Review'
+                          : quote.status === 'DRAFT'
+                          ? 'Saved as Draft (Not Submitted)'
+                          : quote.status === 'APPROVED'
+                          ? 'Awaiting Customer Deal Acceptance'
+                          : 'No Active Bottleneck Detected'}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-brand-900/40 space-y-1">
+                      <div className="text-[10px] font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Recommended Manager Action
+                      </div>
+                      <div className="text-xs font-semibold text-slate-200">
+                        {quote.status === 'PENDING_APPROVAL'
+                          ? 'Review discount risk in Approval Center or Escalate'
+                          : quote.status === 'NEGOTIATION'
+                          ? 'Review proposed discount & accept or reject counter-offer'
+                          : quote.status === 'DRAFT'
+                          ? 'Prompt sales rep to submit draft for routing'
+                          : quote.status === 'APPROVED'
+                          ? 'Follow up with customer to confirm order placement'
+                          : 'Monitor fulfillment & payment reconciliation'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Draft Submission Banner */}
               {quote.status === 'DRAFT' && (
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-between gap-4">
@@ -241,6 +487,24 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                       </button>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Approved Deal Acceptance Banner */}
+              {quote.status === 'APPROVED' && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-emerald-800/80 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-bold text-emerald-300 text-xs">Quotation terms are fully approved.</div>
+                    <div className="text-[11px] text-slate-400">Ready to accept this deal and move to order confirmation?</div>
+                  </div>
+                  <button
+                    onClick={handleAcceptDeal}
+                    disabled={submittingAction}
+                    className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md flex items-center gap-1.5 shrink-0"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {submittingAction ? 'Processing...' : 'Accept Deal'}
+                  </button>
                 </div>
               )}
 

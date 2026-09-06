@@ -137,7 +137,19 @@ export interface Quotation {
   approvals?: Approval[];
   negotiations?: Negotiation[];
   comments?: QuoteComment[];
-  order?: { id: string; orderNumber: string; status: string };
+  order?: {
+    id: string;
+    orderNumber: string;
+    status: string;
+    createdAt?: string;
+    invoices?: Array<{
+      id: string;
+      invoiceNumber: string;
+      totalAmount: number;
+      createdAt: string;
+      payments?: Array<{ id: string; amount: number; paymentDate: string }>;
+    }>;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -311,6 +323,9 @@ export interface DealHealthAlerts {
     quoteNumber: string;
     customerName: string;
     repName: string;
+    status?: string;
+    requiredApprovalLevel?: string;
+    hasManagerApproved?: boolean;
     quoteDiscountPercent: number;
     repHistoricalAvg: number;
     excessFactor: number;

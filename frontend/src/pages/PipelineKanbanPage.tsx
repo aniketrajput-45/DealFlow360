@@ -79,7 +79,13 @@ export const PipelineKanbanPage: React.FC = () => {
       {/* Kanban Board Columns */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-6">
         {stages.map((stage) => {
-          const stageQuotes = quotes.filter((q) => q.status === stage.id);
+          const stageQuotes = quotes
+            .filter((q) => q.status === stage.id)
+            .sort((a, b) => {
+              const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+              const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+              return timeB - timeA;
+            });
           const totalValue = stageQuotes.reduce((sum, q) => sum + q.totalAmount, 0);
 
           return (
@@ -106,14 +112,16 @@ export const PipelineKanbanPage: React.FC = () => {
                     onClick={() => setSelectedQuoteId(quote.id)}
                     className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-brand-500/60 transition-all shadow-md space-y-2.5 cursor-pointer group"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-bold text-white text-xs tracking-tight group-hover:text-brand-400 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-white text-xs tracking-tight group-hover:text-brand-400 transition-colors truncate">
                           {quote.customer?.companyName}
                         </div>
-                        <div className="text-[10px] font-mono text-slate-400">{quote.quoteNumber}</div>
+                        <div className="text-[10px] font-mono text-slate-400 truncate">{quote.quoteNumber}</div>
                       </div>
-                      <Badge status={String(quote.riskScore)} type="risk" />
+                      <div className="shrink-0">
+                        <Badge status={String(quote.riskScore)} type="risk" />
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs pt-1">

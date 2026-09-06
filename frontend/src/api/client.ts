@@ -96,6 +96,16 @@ export const api = {
 
     getById: (id: string) =>
       fetch(`${API_BASE}/customers/${id}`, { headers: getAuthHeaders() }).then((r) => handleResponse<Customer>(r)),
+
+    getGrowthOpportunities: (id: string) =>
+      fetch(`${API_BASE}/customers/${id}/growth-opportunities`, { headers: getAuthHeaders() }).then((r) =>
+        handleResponse<any>(r)
+      ),
+
+    getMyRecommendations: () =>
+      fetch(`${API_BASE}/customers/my-recommendations`, { headers: getAuthHeaders() }).then((r) =>
+        handleResponse<any>(r)
+      ),
   },
 
   // Quotations & Risk Engine

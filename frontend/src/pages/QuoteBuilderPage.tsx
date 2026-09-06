@@ -33,10 +33,30 @@ export const QuoteBuilderPage: React.FC<{ onQuoteCreated?: (id: string) => void 
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   useEffect(() => {
+    // Inspect preselected params from URL hash query or location
+    const hash = window.location.hash;
+    const queryStr = hash.includes('?') ? hash.split('?')[1] : window.location.search.replace('?', '');
+    const urlParams = new URLSearchParams(queryStr);
+    const preselectedCustId = urlParams.get('customerId');
+    const preselectedProdId = urlParams.get('productId');
+
     Promise.all([api.customers.getAll(), api.products.getAll()]).then(([custs, prods]) => {
       setCustomers(custs);
-      if (custs.length > 0) setSelectedCustomerId(custs[0].id);
       setProducts(prods);
+
+      let targetCustId = preselectedCustId && custs.some((c) => c.id === preselectedCustId)
+        ? preselectedCustId
+        : (custs.length > 0 ? custs[0].id : '');
+
+      setSelectedCustomerId(targetCustId);
+
+      // Pre-add recommended product if supplied
+      if (preselectedProdId) {
+        const targetProd = prods.find((p) => p.id === preselectedProdId);
+        if (targetProd) {
+          setCart([{ product: targetProd, quantity: 1, discountPercent: 0 }]);
+        }
+      }
     });
   }, []);
 

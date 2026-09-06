@@ -37,6 +37,21 @@ export const CustomerDashboard: React.FC<Props> = ({ onNavigate }) => {
     (q) => q.status === 'APPROVED' || q.status === 'NEGOTIATION'
   );
 
+  const [recommendationsData, setRecommendationsData] = useState<any | null>(null);
+  const [loadingRecs, setLoadingRecs] = useState(true);
+
+  useEffect(() => {
+    api.customers.getMyRecommendations()
+      .then(setRecommendationsData)
+      .catch((err) => console.error('Failed to load customer recommendations:', err))
+      .finally(() => setLoadingRecs(false));
+  }, []);
+
+  const handleRequestQuote = () => {
+    // Open customer quotes view or pre-fill quote request
+    onNavigate('quotes');
+  };
+
   return (
     <div className="space-y-8">
       {/* Welcome Banner with Primary CTA */}
@@ -235,6 +250,83 @@ export const CustomerDashboard: React.FC<Props> = ({ onNavigate }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* RECOMMENDED PRODUCTS SECTION */}
+      <div className="bg-slate-900/70 rounded-2xl border border-slate-800 p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              RECOMMENDED PRODUCTS
+            </h2>
+            <p className="text-xs text-slate-400">Based on your quotations</p>
+          </div>
+          {recommendationsData && (
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              {recommendationsData.recommendationsCount || 0} Recommendations
+            </span>
+          )}
+        </div>
+
+        {loadingRecs ? (
+          <div className="py-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
+            Evaluating your quotation history for tailored recommendations...
+          </div>
+        ) : recommendationsData && recommendationsData.recommendations && recommendationsData.recommendations.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recommendationsData.recommendations.map((rec: any) => (
+              <div
+                key={rec.id}
+                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/40 transition-all flex flex-col justify-between space-y-3"
+              >
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">{rec.recommendedProduct.name}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
+                          rec.opportunityType === 'Upsell'
+                            ? 'bg-purple-950 text-purple-300 border-purple-800'
+                            : 'bg-teal-950 text-teal-300 border-teal-800'
+                        }`}>
+                          {rec.opportunityType}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">{rec.recommendedProduct.description}</p>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="text-sm font-bold text-white block">₹{rec.recommendedProduct.basePrice.toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500">per {rec.recommendedProduct.unit || 'unit'}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/80 text-xs text-slate-300">
+                    <span className="font-semibold text-slate-200">Reason: </span>
+                    <span>{rec.reason}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                  <span className="text-[11px] text-slate-500">Category: {rec.recommendedProduct.categoryName}</span>
+                  <button
+                    onClick={handleRequestQuote}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-md transition-all flex items-center gap-1"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Request a Quote
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-slate-800">
+            {customerQuotes.length === 0
+              ? 'Recommendations will appear based on your eligible quotations.'
+              : 'No recommended products at this time.'}
+          </div>
+        )}
       </div>
     </div>
   );

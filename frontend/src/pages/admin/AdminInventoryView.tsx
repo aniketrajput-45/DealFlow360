@@ -85,7 +85,7 @@ export const AdminInventoryView: React.FC = () => {
                         <th className="py-2.5 px-3">Category</th>
                         <th className="py-2.5 px-3 text-right">Available Qty</th>
                         <th className="py-2.5 px-3 text-right">Reorder Threshold</th>
-                        <th className="py-2.5 px-3 text-center">Stock Health</th>
+                        <th className="py-2.5 px-3 text-center">Stock Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 text-sm text-slate-300">
@@ -95,7 +95,7 @@ export const AdminInventoryView: React.FC = () => {
                           const reorder = inv.reorderLevel ?? 5;
                           let statusBadge = (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-full border border-emerald-500/20">
-                              <CheckCircle className="w-3 h-3" /> Healthy Stock
+                              <CheckCircle className="w-3 h-3" /> Stock Available
                             </span>
                           );
                           if (available === 0) {

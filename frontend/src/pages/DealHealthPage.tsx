@@ -59,7 +59,7 @@ export const DealHealthPage: React.FC = () => {
     // State 1: Manager approval pending
     if (isPendingApproval && !anom.hasManagerApproved) {
       return {
-        label: 'Escalate to Finance',
+        label: 'Request Finance Review',
         icon: Send,
         className: 'bg-purple-600 hover:bg-purple-500 text-white',
         onClick: () => handleNudge(anom.id, 'ESCALATE_TO_FINANCE'),
@@ -73,7 +73,7 @@ export const DealHealthPage: React.FC = () => {
       anom.requiredApprovalLevel === 'SALES_MANAGER_AND_FINANCE'
     ) {
       return {
-        label: 'Awaiting Finance Review',
+        label: 'Finance Review Required',
         icon: Send,
         className: 'bg-slate-800 text-purple-400 border border-purple-500/30 opacity-80 cursor-not-allowed',
         disabled: true,
@@ -83,7 +83,7 @@ export const DealHealthPage: React.FC = () => {
 
     // State 3: No approval action pending (DRAFT, NEGOTIATION, or requiredApprovalLevel NONE)
     return {
-      label: 'Review Deal',
+      label: 'Analyze Deal',
       icon: Eye,
       className: 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700',
       onClick: () => setSelectedQuoteId(anom.id),
@@ -96,10 +96,10 @@ export const DealHealthPage: React.FC = () => {
       <div>
         <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
           <Activity className="w-6 h-6 text-brand-400" />
-          Deal Health & Anomaly Surveillance
+          Deal Intelligence & Risk Surveillance
         </h1>
         <p className="text-sm text-slate-400">
-          Deterministic surveillance of stalled quotations, rep discount anomalies, and fulfillment slippage.
+          Commercial surveillance of stalled quotations, rep discount anomalies, and fulfillment risk.
         </p>
       </div>
 

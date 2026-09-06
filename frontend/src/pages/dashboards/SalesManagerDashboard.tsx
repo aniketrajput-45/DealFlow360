@@ -221,7 +221,7 @@ export const SalesManagerDashboard: React.FC<Props> = ({ onNavigate }) => {
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="font-semibold text-xs text-white group-hover:text-rose-400 transition-colors">Deal Health & Alerts</div>
+                    <div className="font-semibold text-xs text-white group-hover:text-rose-400 transition-colors">Deal Intelligence & Alerts</div>
                     <div className="text-[11px] text-slate-500">Discount anomalies & stalled deals</div>
                   </div>
                 </div>

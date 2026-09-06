@@ -192,26 +192,26 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                         <Activity className="w-4 h-4" />
                       </div>
                       <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">
-                        360° Deal Health & Surveillance Diagnostic
+                        360° Deal Intelligence & Risk Assessment
                       </h3>
                     </div>
                     {(() => {
                       const risk = quote.riskScore || 0;
                       let badge = (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                          HEALTHY (Score: {risk})
+                          ON TRACK (Score: {risk})
                         </span>
                       );
                       if (risk > 50 || quote.status === 'REJECTED') {
                         badge = (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-950 text-rose-300 border border-rose-800">
-                            CRITICAL RISK (Score: {risk})
+                            HIGH RISK (Score: {risk})
                           </span>
                         );
                       } else if (risk > 20 || quote.status === 'PENDING_APPROVAL' || quote.status === 'NEGOTIATION') {
                         badge = (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-950 text-amber-300 border border-amber-800">
-                            AT RISK / ATTENTION (Score: {risk})
+                            NEEDS ATTENTION (Score: {risk})
                           </span>
                         );
                       }
@@ -219,10 +219,10 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                     })()}
                   </div>
 
-                  {/* Section 1: Overview & Health Summary */}
+                  {/* Section 1: Overview & Deal Summary */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-1.5">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deal Metadata Overview</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deal Overview</div>
                       <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                         <div><span className="text-slate-500">Sales Rep:</span> <span className="font-semibold text-slate-200">{quote.createdBy?.name || 'Enterprise Rep'}</span></div>
                         <div><span className="text-slate-500">Customer:</span> <span className="font-semibold text-slate-200">{quote.customer?.companyName}</span></div>
@@ -232,7 +232,7 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-1.5">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Diagnostic Health Summary</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deal Summary</div>
                       <p className="text-[11px] text-slate-300 leading-relaxed pt-1">
                         {(() => {
                           const reasons: string[] = [];
@@ -252,9 +252,9 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                     </div>
                   </div>
 
-                  {/* Section 2: Health Factors Breakdown */}
+                  {/* Section 2: Risk Factors Breakdown */}
                   <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Deal Health Factor Matrix</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Key Risk Factors</div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                       {/* Factor 1: Discount Risk */}
                       {(() => {
@@ -271,8 +271,8 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
 
                       {/* Factor 2: Approval Status */}
                       {(() => {
-                        const level = quote.status === 'PENDING_APPROVAL' ? 'ATTENTION' : quote.status === 'REJECTED' ? 'CRITICAL' : 'CLEAR';
-                        const color = level === 'ATTENTION' ? 'text-amber-400 border-amber-900/60 bg-amber-950/20' : level === 'CRITICAL' ? 'text-rose-400 border-rose-900/60 bg-rose-950/20' : 'text-emerald-400 border-emerald-900/60 bg-emerald-950/20';
+                        const level = quote.status === 'PENDING_APPROVAL' ? 'ATTENTION' : quote.status === 'REJECTED' ? 'HIGH RISK' : 'CLEAR';
+                        const color = level === 'ATTENTION' ? 'text-amber-400 border-amber-900/60 bg-amber-950/20' : level === 'HIGH RISK' ? 'text-rose-400 border-rose-900/60 bg-rose-950/20' : 'text-emerald-400 border-emerald-900/60 bg-emerald-950/20';
                         return (
                           <div className={`p-2.5 rounded-xl border ${color}`}>
                             <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Governance</div>
@@ -308,9 +308,9 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                     </div>
                   </div>
 
-                  {/* Section 3: Deal Timeline */}
+                  {/* Section 3: Deal Lifecycle Timeline */}
                   <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Real Chronological Lifecycle Timeline</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chronological Deal Lifecycle</div>
                     <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
                       {(() => {
                         const timeline: Array<{ label: string; date: string; badge: string }> = [
@@ -365,11 +365,11 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                     </div>
                   </div>
 
-                  {/* Section 4: Current Bottleneck & Recommended Action */}
+                  {/* Section 4: Current Blocker & Recommended Next Action */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-3.5 rounded-xl bg-slate-900/80 border border-amber-900/40 space-y-1">
                       <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5" /> Current Bottleneck
+                        <AlertTriangle className="w-3.5 h-3.5" /> Current Blocker
                       </div>
                       <div className="text-xs font-bold text-slate-100">
                         {quote.status === 'PENDING_APPROVAL'
@@ -380,17 +380,17 @@ export const QuoteDetailsModal: React.FC<Props> = ({ quoteId, onClose, onQuoteUp
                           ? 'Saved as Draft (Not Submitted)'
                           : quote.status === 'APPROVED'
                           ? 'Awaiting Customer Deal Acceptance'
-                          : 'No Active Bottleneck Detected'}
+                          : 'No Active Blocker Detected'}
                       </div>
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-slate-900/80 border border-brand-900/40 space-y-1">
                       <div className="text-[10px] font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1">
-                        <ShieldCheck className="w-3.5 h-3.5" /> Recommended Manager Action
+                        <ShieldCheck className="w-3.5 h-3.5" /> Recommended Next Action
                       </div>
                       <div className="text-xs font-semibold text-slate-200">
                         {quote.status === 'PENDING_APPROVAL'
-                          ? 'Review discount risk in Approval Center or Escalate'
+                          ? 'Review discount risk in Approval Center or Request Finance Review'
                           : quote.status === 'NEGOTIATION'
                           ? 'Review proposed discount & accept or reject counter-offer'
                           : quote.status === 'DRAFT'

@@ -62,12 +62,12 @@ export const ROLE_NAVIGATION: Record<string, RoleNavConfig> = {
   },
   SALES_MANAGER: {
     roleName: 'Sales Manager',
-    primaryGoal: 'Review deals, approve/reject risky discounts, monitor pipeline & deal health',
+    primaryGoal: 'Review deals, approve/reject risky discounts, monitor pipeline & deal intelligence',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'pipeline', label: 'Sales Pipeline', icon: Kanban },
       { id: 'approvals', label: 'Approval Center', icon: CheckSquare },
-      { id: 'health', label: 'Deal Health', icon: AlertTriangle },
+      { id: 'health', label: 'Deal Intelligence', icon: AlertTriangle },
       { id: 'quotations', label: 'Quotations', icon: FileText },
       { id: 'team', label: 'Team Performance', icon: TrendingUp },
     ],

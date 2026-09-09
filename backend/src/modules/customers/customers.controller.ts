@@ -1,6 +1,93 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../config/prisma';
 
+export const createCustomer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { companyName, contactName, email, phone, address, tierId } = req.body;
+
+    if (!companyName || typeof companyName !== 'string' || !companyName.trim()) {
+      res.status(400).json({ error: 'Company Name is required.' });
+      return;
+    }
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      res.status(400).json({ error: 'Email is required.' });
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if email already exists
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { email: cleanEmail },
+    });
+
+    if (existingCustomer) {
+      res.status(400).json({ error: 'A customer with this email address already exists.' });
+      return;
+    }
+
+    // Default to Bronze tier if none specified
+    let selectedTierId = tierId;
+    if (!selectedTierId) {
+      const defaultTier = await prisma.customerTier.findFirst({
+        where: { name: 'Bronze' },
+      }) || await prisma.customerTier.findFirst();
+
+      if (!defaultTier) {
+        res.status(500).json({ error: 'System configuration error: No customer tiers found.' });
+        return;
+      }
+      selectedTierId = defaultTier.id;
+    } else {
+      const tierExists = await prisma.customerTier.findUnique({
+        where: { id: selectedTierId },
+      });
+      if (!tierExists) {
+        res.status(400).json({ error: 'Invalid Customer Tier specified.' });
+        return;
+      }
+    }
+
+    const customer = await prisma.customer.create({
+      data: {
+        companyName: companyName.trim(),
+        contactName: contactName ? contactName.trim() : null,
+        email: cleanEmail,
+        phone: phone ? phone.trim() : null,
+        address: address ? address.trim() : null,
+        tierId: selectedTierId,
+        isActive: true,
+      },
+      include: {
+        tier: true,
+      },
+    });
+
+    // Customer created successfully
+    res.status(201).json({
+      id: customer.id,
+      companyName: customer.companyName,
+      contactName: customer.contactName,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      tier: {
+        id: customer.tier.id,
+        name: customer.tier.name,
+        maxDiscountPercent: customer.tier.maxDiscountPercent,
+      },
+      stats: {
+        totalQuotes: 0,
+        activeQuotes: 0,
+        totalValue: 0,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create customer.' });
+  }
+};
+
 export const getCustomers = async (req: Request, res: Response): Promise<void> => {
   try {
     // If customer role, restrict only to their own organization

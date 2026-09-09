@@ -89,6 +89,13 @@ export const api = {
     getAll: () =>
       fetch(`${API_BASE}/customers`, { headers: getAuthHeaders() }).then((r) => handleResponse<Customer[]>(r)),
 
+    create: (data: { companyName: string; contactName?: string; email: string; phone?: string; address?: string; tierId?: string }) =>
+      fetch(`${API_BASE}/customers`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      }).then((r) => handleResponse<Customer>(r)),
+
     getTiers: () =>
       fetch(`${API_BASE}/customers/tiers`, { headers: getAuthHeaders() }).then((r) =>
         handleResponse<CustomerTier[]>(r)

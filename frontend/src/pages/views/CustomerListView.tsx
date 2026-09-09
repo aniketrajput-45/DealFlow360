@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { Customer, CustomerTier } from '../../types';
-import { Users, Award, TrendingUp, Sparkles, Plus, X, Building2, Package, Eye } from 'lucide-react';
+import { Users, Award, TrendingUp, Sparkles, Plus, X, Building2, Package, Eye, FileText, AlertCircle } from 'lucide-react';
 
 export const CustomerListView: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -11,12 +11,74 @@ export const CustomerListView: React.FC = () => {
   const [loadingOpps, setLoadingOpps] = useState(false);
   const [viewProductModal, setViewProductModal] = useState<any | null>(null);
 
-  useEffect(() => {
+  // Create Customer Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newCompany, setNewCompany] = useState('');
+  const [newContact, setNewContact] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newTierId, setNewTierId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const loadData = () => {
     Promise.all([api.customers.getAll(), api.customers.getTiers()]).then(([custData, tierData]) => {
       setCustomers(custData);
       setTiers(tierData);
+      if (tierData.length > 0 && !newTierId) {
+        setNewTierId(tierData[0].id);
+      }
     });
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const handleCreateCustomerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!newCompany.trim()) {
+      setFormError('Company Name is required.');
+      return;
+    }
+    if (!newEmail.trim()) {
+      setFormError('Email is required.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const createdCust = await api.customers.create({
+        companyName: newCompany.trim(),
+        contactName: newContact.trim() || undefined,
+        email: newEmail.trim().toLowerCase(),
+        phone: newPhone.trim() || undefined,
+        address: newAddress.trim() || undefined,
+        tierId: newTierId || undefined,
+      });
+
+      // Reset form
+      setNewCompany('');
+      setNewContact('');
+      setNewEmail('');
+      setNewPhone('');
+      setNewAddress('');
+      setShowCreateModal(false);
+
+      // Refresh list
+      loadData();
+
+      // Immediately select new customer so user can perform Create Quote
+      handleSelectCustomer(createdCust);
+    } catch (err: any) {
+      setFormError(err.message || 'Failed to create customer.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSelectCustomer = async (cust: Customer) => {
     setSelectedCustomer(cust);
@@ -31,6 +93,10 @@ export const CustomerListView: React.FC = () => {
     }
   };
 
+  const handleCreateQuoteForCustomer = (cust: Customer) => {
+    window.location.hash = `create-quote?customerId=${cust.id}`;
+  };
+
   const handleCreateQuoteForOpp = (prodId: string) => {
     if (!selectedCustomer) return;
     const targetHash = `create-quote?customerId=${selectedCustomer.id}&productId=${prodId}`;
@@ -39,12 +105,24 @@ export const CustomerListView: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <Users className="w-6 h-6 text-brand-400" />
-          Customer Directory & Growth Opportunities
-        </h1>
-        <p className="text-sm text-slate-400">View customer accounts, assigned pricing tiers, active products, and supported upsell & cross-sell opportunities.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <Users className="w-6 h-6 text-brand-400" />
+            Customer Directory & Growth Opportunities
+          </h1>
+          <p className="text-sm text-slate-400">View customer accounts, assigned pricing tiers, active products, and supported upsell & cross-sell opportunities.</p>
+        </div>
+        <button
+          onClick={() => {
+            setFormError('');
+            setShowCreateModal(true);
+          }}
+          className="px-4 py-2.5 rounded-xl font-bold text-sm bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2 shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          Create Customer
+        </button>
       </div>
 
       {/* Tiers Overview Cards */}
@@ -97,6 +175,16 @@ export const CustomerListView: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        handleCreateQuoteForCustomer(c);
+                      }}
+                      className="px-3 py-1 rounded-lg text-[11px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-1.5 ml-auto mr-2"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Create Quote
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleSelectCustomer(c);
                       }}
                       className="px-3 py-1 rounded-lg text-[11px] font-bold bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/30 transition-all flex items-center gap-1.5 ml-auto"
@@ -112,6 +200,140 @@ export const CustomerListView: React.FC = () => {
         </div>
       </div>
 
+      {/* Create Customer Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
+            <button
+              onClick={() => setShowCreateModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2 text-xs font-mono font-semibold text-brand-400 uppercase tracking-wider mb-1">
+                <Building2 className="w-4 h-4" /> New Customer Registration
+              </div>
+              <h2 className="text-xl font-extrabold text-white">Create New Customer</h2>
+              <p className="text-xs text-slate-400 mt-1">Register a new customer account to immediately generate quotations and deals.</p>
+            </div>
+
+            {formError && (
+              <div className="p-3 rounded-xl bg-red-950/60 border border-red-800/80 text-red-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCustomerSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                  Company / Customer Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. NovaTech Industries"
+                  value={newCompany}
+                  onChange={(e) => setNewCompany(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500 transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rahul Sharma"
+                    value={newContact}
+                    onChange={(e) => setNewContact(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. rahul@novatech.example"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="+91 98765 43210"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Customer Tier
+                  </label>
+                  <select
+                    value={newTierId}
+                    onChange={(e) => setNewTierId(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500 transition-all"
+                  >
+                    {tiers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} (Max {t.maxDiscountPercent}% Off)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                  Address
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Billing / Commercial Address"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-brand-500 transition-all"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {submitting ? 'Creating...' : 'Save & Select Customer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Customer Profile & Supported Products Drawer / Modal */}
       {selectedCustomer && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -123,14 +345,27 @@ export const CustomerListView: React.FC = () => {
               <X className="w-5 h-5" />
             </button>
 
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono font-semibold text-brand-400 uppercase tracking-wider mb-1">
-                <Building2 className="w-4 h-4" /> Customer Account Profile
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-semibold text-brand-400 uppercase tracking-wider mb-1">
+                  <Building2 className="w-4 h-4" /> Customer Account Profile
+                </div>
+                <h2 className="text-xl font-extrabold text-white">{selectedCustomer.companyName}</h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Tier: <span className="text-brand-300 font-bold">{selectedCustomer.tier?.name || 'Bronze'}</span> • Contact: {selectedCustomer.contactName || selectedCustomer.email}
+                </p>
               </div>
-              <h2 className="text-xl font-extrabold text-white">{selectedCustomer.companyName}</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Tier: <span className="text-brand-300 font-bold">{selectedCustomer.tier?.name || 'Bronze'}</span> • Contact: {selectedCustomer.contactName || selectedCustomer.email}
-              </p>
+              <button
+                onClick={() => {
+                  const cust = selectedCustomer;
+                  setSelectedCustomer(null);
+                  handleCreateQuoteForCustomer(cust);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-md transition-all flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Create Quote
+              </button>
             </div>
 
             {/* SECTION 1: CURRENT PRODUCTS */}
